@@ -1,0 +1,66 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.crt
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+coverage/
+*.tsbuildinfo
+
+# IDE / OS
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+.terraform.lock.hcl
+
+# Docker / local services
+.minio/
+postgres-data/
+minio-data/
+
+# Logs
+*.log
+logs/
+
+# Local raw/private data
+data/raw/*
+!data/raw/.gitkeep
+
+# Synthetic dataset contents may be large; keep the folder scaffold
+data/synthetic/casemesh-ai-dataset-v1.0/*
+!data/synthetic/casemesh-ai-dataset-v1.0/.gitkeep
+
+# Evaluation files can be added selectively later
+data/evaluation/private/
