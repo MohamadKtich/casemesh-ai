@@ -1,0 +1,12 @@
+{
+  "python_compile_errors": [],
+  "pyproject_toml_error": null,
+  "secret_scan_hits": [],
+  "migration_chain": "0003 -> 0004",
+  "notes": [
+    "Phase 25 is an additive/replace overlay for the current CaseMesh repository.",
+    "The setup script installs the new LangGraph dependency before running quality checks.",
+    "No external action execution is enabled in this phase.",
+    "Existing local Ollama and PostgreSQL services are reused."
+  ]
+}

@@ -132,7 +132,41 @@ class InvestigationRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         index=True,
         nullable=False,
     )
-    state: Mapped[str] = mapped_column(String(50), default="created", nullable=False)
+    state: Mapped[str] = mapped_column(String(50), default="created", index=True, nullable=False)
+    objective: Mapped[str | None] = mapped_column(Text, nullable=True)
+    current_step: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    attempt: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    confidence: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    abstained: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    analysis_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    assessment_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    findings_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    plan_json: Mapped[list[dict[str, object]]] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+    )
+    evidence_json: Mapped[list[dict[str, object]]] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+    )
+    gaps_json: Mapped[list[dict[str, object]]] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+    )
+    citations_json: Mapped[list[dict[str, object]]] = mapped_column(
+        JSONB,
+        default=list,
+        nullable=False,
+    )
+    metadata_json: Mapped[dict[str, object]] = mapped_column(
+        JSONB,
+        default=dict,
+        nullable=False,
+    )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

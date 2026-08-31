@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "CaseMesh AI"
-    app_version: str = "0.5.0"
+    app_version: str = "0.6.0"
     app_env: Literal["local", "test", "cloud"] = "local"
     log_level: str = "INFO"
     database_url: str = "postgresql+asyncpg://casemesh:casemesh_local@localhost:5432/casemesh"
@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     generation_max_tokens: int = 700
     answer_context_max_chars: int = 12000
     answer_source_max_chars: int = 4000
+
+    # Phase 25: investigation workflow orchestration
+    workflow_retrieval_top_k: int = 5
+    workflow_max_retries: int = 1
+    workflow_evidence_excerpt_chars: int = 600
 
     model_config = SettingsConfigDict(
         env_file=".env",
