@@ -1,0 +1,8 @@
+{
+  "python_compile_errors": [],
+  "secret_scan_hits": [],
+  "notes": [
+    "SQLAlchemy metadata constraints aligned with Alembic 0002.",
+    "Filename sanitization test corrected to match intentional run-collapsing behavior."
+  ]
+}

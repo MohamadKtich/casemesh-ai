@@ -6,9 +6,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "CaseMesh AI"
+    app_version: str = "0.3.0"
     app_env: Literal["local", "test", "cloud"] = "local"
     log_level: str = "INFO"
     database_url: str = "postgresql+asyncpg://casemesh:casemesh_local@localhost:5432/casemesh"
+    document_storage_root: str = "data/raw"
+    max_upload_bytes: int = 10 * 1024 * 1024
+    chunk_max_chars: int = 1200
+    chunk_overlap_chars: int = 200
 
     model_config = SettingsConfigDict(
         env_file=".env",

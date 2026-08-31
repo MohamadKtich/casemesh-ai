@@ -2,7 +2,18 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import Boolean, Float, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -34,6 +45,7 @@ class Case(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
 class CaseDocument(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "case_documents"
+    __table_args__ = (UniqueConstraint("case_id", "sha256", name="uq_case_documents_case_sha256"),)
 
     case_id: Mapped[UUID] = mapped_column(
         ForeignKey("cases.id", ondelete="CASCADE"),
@@ -45,6 +57,38 @@ class CaseDocument(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     storage_uri: Mapped[str] = mapped_column(Text, nullable=False)
     sha256: Mapped[str | None] = mapped_column(String(64), nullable=True)
     ingestion_status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)
+    source_type: Mapped[str] = mapped_column(String(50), default="upload", nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, default=0, nullable=False)
+    parser_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    text_length: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    ingested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ingestion_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class DocumentChunk(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "document_chunks"
+    __table_args__ = (
+        UniqueConstraint(
+            "document_id",
+            "chunk_index",
+            name="uq_document_chunks_document_index",
+        ),
+    )
+
+    document_id: Mapped[UUID] = mapped_column(
+        ForeignKey("case_documents.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    case_id: Mapped[UUID] = mapped_column(
+        ForeignKey("cases.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    char_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict, nullable=False)
 
 
 class Policy(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -54,8 +98,8 @@ class Policy(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     title: Mapped[str] = mapped_column(String(300), nullable=False)
     version: Mapped[str] = mapped_column(String(50), nullable=False)
     source_uri: Mapped[str | None] = mapped_column(Text, nullable=True)
-    effective_from: Mapped[datetime | None] = mapped_column(nullable=True)
-    effective_to: Mapped[datetime | None] = mapped_column(nullable=True)
+    effective_from: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    effective_to: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Evidence(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -85,8 +129,8 @@ class InvestigationRun(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         nullable=False,
     )
     state: Mapped[str] = mapped_column(String(50), default="created", nullable=False)
-    started_at: Mapped[datetime | None] = mapped_column(nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class ResolutionDraft(UUIDPrimaryKeyMixin, TimestampMixin, Base):

@@ -1,0 +1,15 @@
+{
+  "phase": 22,
+  "name": "Evidence & Document Ingestion Foundation",
+  "features": [
+    "multipart document upload",
+    "local streaming storage",
+    "SHA-256 checksums",
+    "duplicate document protection",
+    "TXT/MD/JSON/CSV/PDF text extraction",
+    "deterministic chunking",
+    "document_chunks persistence",
+    "ingestion lifecycle status",
+    "quality checks and tests"
+  ]
+}

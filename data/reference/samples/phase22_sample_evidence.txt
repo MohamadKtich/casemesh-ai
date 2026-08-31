@@ -1,0 +1,22 @@
+CaseMesh AI — Sample SLA Evidence
+
+Incident ID: INC-2026-001
+Customer Reference: CUSTOMER-DEMO-001
+Service: Managed API Gateway
+Severity: High
+
+Timeline:
+09:12 UTC — Monitoring detected elevated error rates.
+09:18 UTC — Service availability dropped below the contractual target.
+09:31 UTC — Operations began mitigation.
+10:04 UTC — Service recovered.
+10:22 UTC — Monitoring confirmed stable operation.
+
+Customer impact:
+The customer reported failed API requests during the incident window and
+requested an SLA credit review.
+
+Policy context:
+Any credit recommendation must be supported by verified outage duration,
+the applicable SLA policy, and human approval before an external action is
+executed.

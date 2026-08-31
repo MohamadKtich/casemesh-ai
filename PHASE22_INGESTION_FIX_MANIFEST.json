@@ -1,0 +1,19 @@
+{
+  "phase": "22-ingestion-fix",
+  "root_cause": [
+    "CaseDocument.ingested_at was inferred by SQLAlchemy as TIMESTAMP WITHOUT TIME ZONE while the code writes UTC-aware datetimes.",
+    "After the failed flush/commit, the same AsyncSession remained in PendingRollbackError state while trying to mark ingestion as failed."
+  ],
+  "fixes": [
+    "Explicit DateTime(timezone=True) mappings for domain UTC datetime fields.",
+    "Rollback-safe document ingestion repository transaction handling.",
+    "Regression tests for timezone mappings and failure rollback."
+  ],
+  "files": [
+    "apps/api/src/casemesh/db/models.py",
+    "apps/api/src/casemesh/repositories/documents.py",
+    "apps/api/tests/test_datetime_columns.py",
+    "apps/api/tests/test_document_repository.py"
+  ],
+  "python_compile_errors": []
+}

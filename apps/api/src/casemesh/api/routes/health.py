@@ -13,5 +13,5 @@ async def health_check() -> HealthResponse:
         status="healthy",
         service=settings.app_name,
         environment=settings.app_env,
-        version="0.1.0",
+        version=settings.app_version,
     )

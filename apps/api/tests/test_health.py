@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from casemesh.core.config import get_settings
 from casemesh.main import app
 
 client = TestClient(app)
@@ -20,4 +21,4 @@ def test_health() -> None:
     assert body["status"] == "healthy"
     assert body["service"] == "CaseMesh AI"
     assert body["environment"] == "local"
-    assert body["version"] == "0.1.0"
+    assert body["version"] == get_settings().app_version

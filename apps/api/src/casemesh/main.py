@@ -17,6 +17,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.info(
         "application_starting",
         app_name=settings.app_name,
+        app_version=settings.app_version,
         environment=settings.app_env,
     )
     yield
@@ -25,7 +26,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title=settings.app_name,
-    version="0.1.0",
+    version=settings.app_version,
     description="CaseMesh AI case investigation and resolution API",
     lifespan=lifespan,
 )
@@ -37,6 +38,7 @@ app.include_router(api_router)
 async def root() -> dict[str, str]:
     return {
         "service": settings.app_name,
+        "version": settings.app_version,
         "status": "running",
         "docs": "/docs",
     }

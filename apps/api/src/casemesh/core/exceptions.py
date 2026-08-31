@@ -4,3 +4,15 @@ class DuplicateCaseNumberError(Exception):
     def __init__(self, case_number: str) -> None:
         self.case_number = case_number
         super().__init__(f"Case number already exists: {case_number}")
+
+
+class UnsupportedDocumentTypeError(Exception):
+    """Raised when a document type is not supported."""
+
+
+class DocumentTooLargeError(Exception):
+    """Raised when an uploaded document exceeds the configured size limit."""
+
+
+class DuplicateDocumentError(Exception):
+    """Raised when the same document content already exists for the case."""
