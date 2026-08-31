@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "CaseMesh AI"
-    app_version: str = "0.4.0"
+    app_version: str = "0.5.0"
     app_env: Literal["local", "test", "cloud"] = "local"
     log_level: str = "INFO"
     database_url: str = "postgresql+asyncpg://casemesh:casemesh_local@localhost:5432/casemesh"
@@ -24,6 +24,14 @@ class Settings(BaseSettings):
     retrieval_rrf_k: int = 60
     retrieval_vector_weight: float = 0.65
     retrieval_keyword_weight: float = 0.35
+
+    # Phase 24: grounded local answer synthesis
+    generation_provider: Literal["ollama"] = "ollama"
+    generation_model: str = "qwen3:8b"
+    generation_temperature: float = 0.1
+    generation_max_tokens: int = 700
+    answer_context_max_chars: int = 12000
+    answer_source_max_chars: int = 4000
 
     model_config = SettingsConfigDict(
         env_file=".env",

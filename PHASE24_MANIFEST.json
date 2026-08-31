@@ -1,0 +1,21 @@
+{
+  "phase": 24,
+  "name": "Grounded Answer Synthesis + Evidence Citations",
+  "default_generation_provider": "ollama",
+  "default_generation_model": "qwen3:8b",
+  "features": [
+    "generation provider abstraction",
+    "local Ollama generation",
+    "evidence context builder",
+    "stable evidence labels",
+    "inline citations",
+    "structured citation metadata",
+    "abstention on no evidence",
+    "grounding validation",
+    "one automatic repair attempt",
+    "generation health endpoint",
+    "grounded answer endpoint",
+    "regression tests"
+  ],
+  "database_migration_required": false
+}

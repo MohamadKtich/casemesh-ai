@@ -1,0 +1,10 @@
+{
+  "python_compile_errors": [],
+  "secret_scan_hits": [],
+  "notes": [
+    "No new paid service dependency is introduced.",
+    "No Phase 24 database migration is required.",
+    "The existing Phase 23 pgvector embeddings remain intact.",
+    "The default generation model is qwen3:8b through local Ollama."
+  ]
+}
