@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -89,6 +90,9 @@ class DocumentChunk(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     char_count: Mapped[int] = mapped_column(Integer, nullable=False)
     metadata_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict, nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(768), nullable=True)
+    embedding_model: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    embedded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Policy(UUIDPrimaryKeyMixin, TimestampMixin, Base):

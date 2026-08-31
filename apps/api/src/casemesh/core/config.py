@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "CaseMesh AI"
-    app_version: str = "0.3.0"
+    app_version: str = "0.4.0"
     app_env: Literal["local", "test", "cloud"] = "local"
     log_level: str = "INFO"
     database_url: str = "postgresql+asyncpg://casemesh:casemesh_local@localhost:5432/casemesh"
@@ -14,6 +14,16 @@ class Settings(BaseSettings):
     max_upload_bytes: int = 10 * 1024 * 1024
     chunk_max_chars: int = 1200
     chunk_overlap_chars: int = 200
+
+    # Phase 23: local-first embeddings + hybrid retrieval
+    embedding_provider: Literal["ollama"] = "ollama"
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    embedding_model: str = "nomic-embed-text"
+    embedding_dimension: int = 768
+    retrieval_candidate_limit: int = 20
+    retrieval_rrf_k: int = 60
+    retrieval_vector_weight: float = 0.65
+    retrieval_keyword_weight: float = 0.35
 
     model_config = SettingsConfigDict(
         env_file=".env",

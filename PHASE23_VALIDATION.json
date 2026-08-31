@@ -1,0 +1,9 @@
+{
+  "python_compile_errors": [],
+  "secret_scan_hits": [],
+  "notes": [
+    "No paid embedding API is required.",
+    "Migration 0003 preserves Phase 22 data and only adds vector/search fields and indexes.",
+    "The existing Phase 22 chunks remain intact and can be embedded after upgrade."
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "phase": 23,
+  "name": "Embeddings + pgvector + Hybrid Retrieval Foundation",
+  "default_embedding_provider": "ollama",
+  "default_embedding_model": "nomic-embed-text",
+  "embedding_dimension": 768,
+  "retrieval": "weighted reciprocal rank fusion",
+  "features": [
+    "provider abstraction",
+    "local Ollama embeddings",
+    "pgvector vector(768)",
+    "HNSW cosine index",
+    "PostgreSQL full-text GIN index",
+    "document embedding endpoint",
+    "hybrid case retrieval endpoint",
+    "RRF fusion",
+    "regression tests"
+  ]
+}
