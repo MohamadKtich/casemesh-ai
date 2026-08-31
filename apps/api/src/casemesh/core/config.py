@@ -6,7 +6,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "CaseMesh AI"
-    app_version: str = "0.6.0"
+    app_version: str = "0.7.0"
     app_env: Literal["local", "test", "cloud"] = "local"
     log_level: str = "INFO"
     database_url: str = "postgresql+asyncpg://casemesh:casemesh_local@localhost:5432/casemesh"
@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     workflow_retrieval_top_k: int = 5
     workflow_max_retries: int = 1
     workflow_evidence_excerpt_chars: int = 600
+
+    # Phase 26: durable HITL approval + policy guardrails
+    approval_interrupt_question: str = (
+        "A human reviewer must approve this sensitive action before execution."
+    )
+    approval_allow_internal_note_without_review: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env",

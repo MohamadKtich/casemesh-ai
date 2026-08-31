@@ -1,0 +1,21 @@
+{
+  "phase": 26,
+  "name": "Human-in-the-Loop Approval and Policy Guardrails",
+  "version": "0.7.0",
+  "database_revision": "0005",
+  "langgraph_checkpoint_backend": "PostgreSQL",
+  "external_execution_enabled": false,
+  "features": [
+    "deterministic policy guardrails",
+    "deny-by-default unknown actions",
+    "risk classification",
+    "resolution draft creation",
+    "governed action requests",
+    "durable LangGraph PostgreSQL checkpoints",
+    "LangGraph interrupt-based human approval",
+    "approve/reject resume endpoint",
+    "audit trail",
+    "financial-action low-confidence block",
+    "no external execution before MCP phase"
+  ]
+}

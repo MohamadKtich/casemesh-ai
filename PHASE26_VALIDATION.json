@@ -1,0 +1,18 @@
+{
+  "python_compile_errors": [],
+  "ast_parse_errors": [],
+  "pyproject_toml_error": null,
+  "secret_scan_hits": [],
+  "migration_chain": "0004 -> 0005",
+  "dependency_references_verified_on_web": {
+    "langgraph": "1.2.11 already installed in user's Phase 25 environment",
+    "langgraph-checkpoint-postgres": "3.1.2",
+    "psycopg": "3.3.4"
+  },
+  "local_quality_checks_required_after_copy": [
+    "ruff format",
+    "ruff check",
+    "mypy",
+    "pytest"
+  ]
+}

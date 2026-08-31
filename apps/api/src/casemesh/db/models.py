@@ -210,8 +210,15 @@ class Approval(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=True,
     )
-    decision: Mapped[str] = mapped_column(String(50), nullable=False)
+    reviewer_ref: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    decision: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    metadata_json: Mapped[dict[str, object]] = mapped_column(
+        JSONB,
+        default=dict,
+        nullable=False,
+    )
 
 
 class ActionRequest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -222,14 +229,42 @@ class ActionRequest(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         index=True,
         nullable=False,
     )
+    investigation_run_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("investigation_runs.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    resolution_draft_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("resolution_drafts.id", ondelete="SET NULL"),
+        nullable=True,
+    )
     approval_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("approvals.id", ondelete="SET NULL"),
         nullable=True,
     )
+    thread_id: Mapped[str | None] = mapped_column(String(200), unique=True, nullable=True)
     action_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    status: Mapped[str] = mapped_column(String(50), default="pending", nullable=False)
+    status: Mapped[str] = mapped_column(String(50), default="pending", index=True, nullable=False)
+    policy_decision: Mapped[str] = mapped_column(
+        String(50),
+        default="pending",
+        nullable=False,
+    )
+    policy_rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    risk_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    requires_human_approval: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        nullable=False,
+    )
     payload_json: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict, nullable=False)
+    reviewed_payload_json: Mapped[dict[str, object]] = mapped_column(
+        JSONB,
+        default=dict,
+        nullable=False,
+    )
     external_ref: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class AuditEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -237,6 +272,16 @@ class AuditEvent(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     case_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("cases.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    investigation_run_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("investigation_runs.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    action_request_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("action_requests.id", ondelete="SET NULL"),
         index=True,
         nullable=True,
     )

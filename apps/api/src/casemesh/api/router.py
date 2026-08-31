@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from casemesh.api.routes.actions import router as actions_router
 from casemesh.api.routes.answers import router as answers_router
 from casemesh.api.routes.cases import router as cases_router
 from casemesh.api.routes.documents import router as documents_router
@@ -17,3 +18,4 @@ api_router.include_router(documents_router)
 api_router.include_router(retrieval_router)
 api_router.include_router(answers_router)
 api_router.include_router(investigations_router)
+api_router.include_router(actions_router)
