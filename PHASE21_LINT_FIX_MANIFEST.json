@@ -1,0 +1,12 @@
+{
+  "purpose": "Phase 21 Ruff/B008/UP017/import-order fixes and stricter setup script",
+  "files": [
+    "apps/api/alembic/env.py",
+    "apps/api/alembic/versions/0001_initial_domain.py",
+    "apps/api/src/casemesh/api/routes/cases.py",
+    "apps/api/src/casemesh/db/base.py",
+    "scripts/setup_database.ps1"
+  ],
+  "python_compile_errors": [],
+  "secret_scan_hits": []
+}

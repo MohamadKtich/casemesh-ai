@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     app_name: str = "CaseMesh AI"
     app_env: Literal["local", "test", "cloud"] = "local"
     log_level: str = "INFO"
+    database_url: str = "postgresql+asyncpg://casemesh:casemesh_local@localhost:5432/casemesh"
 
     model_config = SettingsConfigDict(
         env_file=".env",

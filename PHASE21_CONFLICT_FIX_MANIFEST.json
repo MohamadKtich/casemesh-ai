@@ -1,0 +1,13 @@
+{
+  "phase": "21-final-fix",
+  "purpose": "Handle duplicate case_number as HTTP 409 Conflict",
+  "files": [
+    "apps/api/src/casemesh/api/routes/cases.py",
+    "apps/api/src/casemesh/core/exceptions.py",
+    "apps/api/src/casemesh/repositories/cases.py",
+    "apps/api/src/casemesh/services/cases.py",
+    "apps/api/tests/test_case_service.py",
+    "docs/PHASE21_DATABASE_DOMAIN.md"
+  ],
+  "python_compile_errors": []
+}

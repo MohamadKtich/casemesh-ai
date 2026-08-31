@@ -1,0 +1,7 @@
+{
+  "phase": 21,
+  "name": "PostgreSQL + pgvector + Domain Models + Alembic",
+  "file_count": 24,
+  "compile_errors": [],
+  "secret_scan_hits": []
+}
