@@ -2,19 +2,85 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     container_name: casemesh-postgres
+
     environment:
-      POSTGRES_USER: casemesh
-      POSTGRES_PASSWORD: casemesh_local
-      POSTGRES_DB: casemesh
+      POSTGRES_USER: ${POSTGRES_USER:-casemesh}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-casemesh_local}
+      POSTGRES_DB: ${POSTGRES_DB:-casemesh}
+
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
+
     volumes:
       - casemesh_postgres_data:/var/lib/postgresql/data
+
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U casemesh -d casemesh"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-casemesh} -d ${POSTGRES_DB:-casemesh}"
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
+
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+
+    image: casemesh-api:phase27a
+    container_name: casemesh-api
+
+    environment:
+      APP_NAME: ${APP_NAME:-CaseMesh AI}
+      APP_ENV: ${APP_ENV:-local}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+      DATABASE_URL: >-
+        postgresql+asyncpg://${POSTGRES_USER:-casemesh}:${POSTGRES_PASSWORD:-casemesh_local}@postgres:5432/${POSTGRES_DB:-casemesh}
+
+      DOCUMENT_STORAGE_ROOT: /app/data/raw
+
+      EMBEDDING_PROVIDER: ollama
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-768}
+
+      GENERATION_PROVIDER: ollama
+      GENERATION_MODEL: ${GENERATION_MODEL:-qwen3:8b}
+      GENERATION_TEMPERATURE: ${GENERATION_TEMPERATURE:-0.1}
+      GENERATION_MAX_TOKENS: ${GENERATION_MAX_TOKENS:-700}
+
+    ports:
+      - "${API_PORT:-8000}:8000"
+
+    volumes:
+      - ./data:/app/data
+
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"
+        ]
+      interval: 30s
+      timeout: 5s
+      start_period: 20s
+      retries: 3
+
+    restart: unless-stopped
 
 volumes:
   casemesh_postgres_data:
