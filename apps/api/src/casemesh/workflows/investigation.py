@@ -4,12 +4,12 @@ from langgraph.graph import END, START, StateGraph
 
 from casemesh.core.config import Settings
 from casemesh.db.models import InvestigationRun
-from casemesh.repositories.cases import CaseRepository
+from casemesh.services.case_reader import CaseReader
 from casemesh.repositories.investigations import InvestigationRepository
 from casemesh.schemas.answers import EvidenceCitation
 from casemesh.schemas.retrieval import RetrievalResult
 from casemesh.services.answers import AnswerService
-from casemesh.services.retrieval import RetrievalService
+from casemesh.services.retrieval_contract import RetrievalSearcher
 from casemesh.workflows.state import InvestigationState
 
 RouteDecision = Literal[
@@ -42,14 +42,14 @@ class InvestigationWorkflow:
         *,
         run: InvestigationRun,
         settings: Settings,
-        case_repository: CaseRepository,
+        case_reader: CaseReader,
         investigation_repository: InvestigationRepository,
-        retrieval_service: RetrievalService,
+        retrieval_service: RetrievalSearcher,
         answer_service: AnswerService,
     ) -> None:
         self._run = run
         self._settings = settings
-        self._cases = case_repository
+        self._cases = case_reader
         self._investigations = investigation_repository
         self._retrieval = retrieval_service
         self._answers = answer_service

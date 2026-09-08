@@ -5,7 +5,7 @@ from fastapi import HTTPException, status
 
 from casemesh.core.config import Settings
 from casemesh.db.models import InvestigationRun
-from casemesh.repositories.cases import CaseRepository
+from casemesh.services.case_reader import CaseReader
 from casemesh.repositories.investigations import InvestigationRepository
 from casemesh.schemas.investigations import (
     InvestigationCitation,
@@ -15,7 +15,7 @@ from casemesh.schemas.investigations import (
     InvestigationRunResponse,
 )
 from casemesh.services.answers import AnswerService
-from casemesh.services.retrieval import RetrievalService
+from casemesh.services.retrieval_contract import RetrievalSearcher
 from casemesh.workflows.investigation import InvestigationWorkflow
 from casemesh.workflows.state import InvestigationState
 
@@ -25,13 +25,13 @@ class InvestigationService:
         self,
         *,
         settings: Settings,
-        case_repository: CaseRepository,
+        case_reader: CaseReader,
         investigation_repository: InvestigationRepository,
-        retrieval_service: RetrievalService,
+        retrieval_service: RetrievalSearcher,
         answer_service: AnswerService,
     ) -> None:
         self._settings = settings
-        self._cases = case_repository
+        self._cases = case_reader
         self._investigations = investigation_repository
         self._retrieval = retrieval_service
         self._answers = answer_service
@@ -59,7 +59,7 @@ class InvestigationService:
         workflow = InvestigationWorkflow(
             run=run,
             settings=self._settings,
-            case_repository=self._cases,
+            case_reader=self._cases,
             investigation_repository=self._investigations,
             retrieval_service=self._retrieval,
             answer_service=self._answers,

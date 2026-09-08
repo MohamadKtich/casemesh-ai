@@ -14,7 +14,7 @@ from casemesh.schemas.answers import (
     GroundedModelOutput,
     GroundingMetadata,
 )
-from casemesh.services.retrieval import RetrievalService
+from casemesh.services.retrieval_contract import RetrievalSearcher
 
 _CITATION_RE = re.compile(r"\[(E\d+)\]")
 
@@ -40,6 +40,7 @@ def _extract_json_object(raw_text: str) -> str:
 
     start = text.find("{")
     end = text.rfind("}")
+
     if start == -1 or end == -1 or end <= start:
         raise ValueError("No JSON object found in model output.")
 
@@ -50,7 +51,7 @@ class AnswerService:
     def __init__(
         self,
         *,
-        retrieval_service: RetrievalService,
+        retrieval_service: RetrievalSearcher,
         generation_provider: GenerationProvider,
         context_builder: EvidenceContextBuilder,
     ) -> None:
@@ -74,12 +75,17 @@ class AnswerService:
             top_k=top_k,
         )
 
-        sources = self._context_builder.build(retrieval.results)
+        sources = self._context_builder.build(
+            retrieval.results
+        )
 
         if not sources:
             return GroundedAnswerResponse(
                 question=question,
-                answer=("I cannot answer this from the currently available case evidence."),
+                answer=(
+                    "I cannot answer this from the currently available "
+                    "case evidence."
+                ),
                 confidence="low",
                 abstained=True,
                 citations=[],
@@ -100,13 +106,33 @@ class AnswerService:
             sources=sources,
         )
 
-        source_by_label = {source.label: source for source in sources}
-        labels = extract_citation_labels(output.answer)
-        valid_labels = [label for label in labels if label in source_by_label]
+        source_by_label = {
+            source.label: source
+            for source in sources
+        }
 
-        citations = [self._citation_from_source(source_by_label[label]) for label in valid_labels]
+        labels = extract_citation_labels(
+            output.answer
+        )
 
-        ratio = len(citations) / len(sources) if sources else 0.0
+        valid_labels = [
+            label
+            for label in labels
+            if label in source_by_label
+        ]
+
+        citations = [
+            self._citation_from_source(
+                source_by_label[label]
+            )
+            for label in valid_labels
+        ]
+
+        ratio = (
+            len(citations) / len(sources)
+            if sources
+            else 0.0
+        )
 
         return GroundedAnswerResponse(
             question=question,
@@ -118,7 +144,10 @@ class AnswerService:
                 retrieved_chunks=len(retrieval.results),
                 context_chunks=len(sources),
                 cited_chunks=len(citations),
-                citation_source_ratio=round(ratio, 4),
+                citation_source_ratio=round(
+                    ratio,
+                    4,
+                ),
             ),
             retrieval_mode=retrieval.mode,
             embedding_model=retrieval.embedding_model,
@@ -132,8 +161,16 @@ class AnswerService:
         question: str,
         sources: list[EvidenceSource],
     ) -> GroundedModelOutput:
-        allowed_labels = [source.label for source in sources]
-        evidence_context = self._context_builder.render(sources)
+        allowed_labels = [
+            source.label
+            for source in sources
+        ]
+
+        evidence_context = (
+            self._context_builder.render(
+                sources
+            )
+        )
 
         system_prompt = (
             "You are CaseMesh, an evidence-grounded case analyst. "
@@ -154,7 +191,9 @@ class AnswerService:
             f"EVIDENCE:\n{evidence_context}"
         )
 
-        last_error = "Unknown grounding validation failure."
+        last_error = (
+            "Unknown grounding validation failure."
+        )
 
         for attempt in range(2):
             if attempt == 1:
@@ -185,25 +224,51 @@ class AnswerService:
                 ) from exc
 
             try:
-                payload = json.loads(_extract_json_object(raw))
-                output = GroundedModelOutput.model_validate(payload)
+                payload = json.loads(
+                    _extract_json_object(raw)
+                )
+
+                output = (
+                    GroundedModelOutput.model_validate(
+                        payload
+                    )
+                )
             except (
                 json.JSONDecodeError,
                 ValidationError,
                 ValueError,
             ) as exc:
-                last_error = f"Invalid structured model output: {exc}"
+                last_error = (
+                    "Invalid structured model output: "
+                    f"{exc}"
+                )
                 continue
 
-            labels = extract_citation_labels(output.answer)
-            unknown = [label for label in labels if label not in allowed_labels]
+            labels = extract_citation_labels(
+                output.answer
+            )
+
+            unknown = [
+                label
+                for label in labels
+                if label not in allowed_labels
+            ]
 
             if unknown:
-                last_error = "Model used unknown citation labels: " + ", ".join(unknown)
+                last_error = (
+                    "Model used unknown citation labels: "
+                    + ", ".join(unknown)
+                )
                 continue
 
-            if not output.abstained and not labels:
-                last_error = "Non-abstained answer did not include evidence citations."
+            if (
+                not output.abstained
+                and not labels
+            ):
+                last_error = (
+                    "Non-abstained answer did not "
+                    "include evidence citations."
+                )
                 continue
 
             return output
@@ -218,8 +283,12 @@ class AnswerService:
         source: EvidenceSource,
     ) -> EvidenceCitation:
         excerpt = source.content
+
         if len(excerpt) > 320:
-            excerpt = excerpt[:317].rstrip() + "..."
+            excerpt = (
+                excerpt[:317].rstrip()
+                + "..."
+            )
 
         return EvidenceCitation(
             label=source.label,

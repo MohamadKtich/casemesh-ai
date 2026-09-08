@@ -9,18 +9,29 @@ from casemesh.db.session import get_db_session
 from casemesh.policy.guardrails import PolicyGuard
 from casemesh.repositories.actions import ActionRepository
 from casemesh.repositories.cases import CaseRepository
-from casemesh.repositories.investigations import InvestigationRepository
+from casemesh.repositories.investigations import (
+    InvestigationRepository,
+)
 from casemesh.schemas.actions import (
+    ActionExecutionRequest,
+    ActionExecutionResponse,
     ActionProposalRequest,
     ActionRequestResponse,
     ApprovalDecisionRequest,
     AuditEventResponse,
 )
 from casemesh.services.actions import ActionService
+from casemesh.services.execution import (
+    ActionExecutionService,
+)
+
 
 router = APIRouter()
 
-DbSession = Annotated[AsyncSession, Depends(get_db_session)]
+DbSession = Annotated[
+    AsyncSession,
+    Depends(get_db_session),
+]
 
 
 def get_action_service(
@@ -31,19 +42,39 @@ def get_action_service(
     return ActionService(
         settings=settings,
         case_repository=CaseRepository(session),
-        investigation_repository=InvestigationRepository(session),
+        investigation_repository=(
+            InvestigationRepository(session)
+        ),
         action_repository=ActionRepository(session),
         policy_guard=PolicyGuard(
             allow_internal_note_without_review=(
-                settings.approval_allow_internal_note_without_review
+                settings
+                .approval_allow_internal_note_without_review
             )
         ),
+    )
+
+
+def get_action_execution_service(
+    session: DbSession,
+) -> ActionExecutionService:
+    settings = get_settings()
+
+    return ActionExecutionService(
+        settings=settings,
+        action_repository=ActionRepository(session),
+        case_repository=CaseRepository(session),
     )
 
 
 ActionServiceDep = Annotated[
     ActionService,
     Depends(get_action_service),
+]
+
+ActionExecutionServiceDep = Annotated[
+    ActionExecutionService,
+    Depends(get_action_execution_service),
 ]
 
 
@@ -87,6 +118,26 @@ async def decide_action(
     )
 
 
+@router.post(
+    "/cases/{case_id}/actions/{action_request_id}/execute",
+    response_model=ActionExecutionResponse,
+    tags=["execution"],
+)
+async def execute_action(
+    case_id: UUID,
+    action_request_id: UUID,
+    payload: ActionExecutionRequest,
+    service: ActionExecutionServiceDep,
+) -> ActionExecutionResponse:
+    return await service.execute(
+        case_id=case_id,
+        action_request_id=action_request_id,
+        mode=payload.mode,
+        idempotency_key=payload.idempotency_key,
+        requested_by=payload.requested_by,
+    )
+
+
 @router.get(
     "/cases/{case_id}/actions/{action_request_id}",
     response_model=ActionRequestResponse,
@@ -112,7 +163,9 @@ async def list_actions(
     case_id: UUID,
     service: ActionServiceDep,
 ) -> list[ActionRequestResponse]:
-    return await service.list(case_id=case_id)
+    return await service.list(
+        case_id=case_id
+    )
 
 
 @router.get(

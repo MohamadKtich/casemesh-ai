@@ -4,11 +4,12 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from casemesh.core.config import get_settings
+from casemesh.core.config import Settings, get_settings
 from casemesh.db.session import get_db_session
 from casemesh.embeddings.factory import get_embedding_provider
 from casemesh.grounding.context import EvidenceContextBuilder
 from casemesh.llm.factory import get_generation_provider
+from casemesh.mcp.client import CaseMeshMcpClient
 from casemesh.repositories.cases import CaseRepository
 from casemesh.repositories.documents import DocumentRepository
 from casemesh.repositories.investigations import InvestigationRepository
@@ -18,41 +19,120 @@ from casemesh.schemas.investigations import (
     InvestigationStartRequest,
 )
 from casemesh.services.answers import AnswerService
+from casemesh.services.case_reader import (
+    CaseReader,
+    RepositoryCaseReader,
+)
 from casemesh.services.investigations import InvestigationService
+from casemesh.services.mcp_cases import McpCaseReader
+from casemesh.services.mcp_retrieval import McpRetrievalService
 from casemesh.services.retrieval import RetrievalService
+from casemesh.services.retrieval_contract import RetrievalSearcher
+
 
 router = APIRouter()
 
-DbSession = Annotated[AsyncSession, Depends(get_db_session)]
+DbSession = Annotated[
+    AsyncSession,
+    Depends(get_db_session),
+]
+
+
+def _build_mcp_client(
+    *,
+    settings: Settings,
+) -> CaseMeshMcpClient:
+    if not settings.mcp_auth_token.strip():
+        raise RuntimeError(
+            "INVESTIGATION_USE_MCP is enabled but "
+            "MCP_AUTH_TOKEN is not configured."
+        )
+
+    return CaseMeshMcpClient(
+        url=settings.mcp_client_url,
+        token=settings.mcp_auth_token,
+        timeout_seconds=(
+            settings.mcp_client_timeout_seconds
+        ),
+    )
+
+
+def build_case_reader(
+    *,
+    session: AsyncSession,
+) -> CaseReader:
+    settings = get_settings()
+
+    if settings.investigation_use_mcp:
+        return McpCaseReader(
+            client=_build_mcp_client(
+                settings=settings,
+            ),
+        )
+
+    return RepositoryCaseReader(
+        repository=CaseRepository(session),
+    )
+
+
+def build_retrieval_searcher(
+    *,
+    session: AsyncSession,
+) -> RetrievalSearcher:
+    settings = get_settings()
+
+    if settings.investigation_use_mcp:
+        return McpRetrievalService(
+            client=_build_mcp_client(
+                settings=settings,
+            ),
+        )
+
+    return RetrievalService(
+        case_repository=CaseRepository(session),
+        document_repository=DocumentRepository(
+            session
+        ),
+        retrieval_repository=RetrievalRepository(
+            session
+        ),
+        embedding_provider=get_embedding_provider(),
+    )
 
 
 def get_investigation_service(
     session: DbSession,
 ) -> InvestigationService:
     settings = get_settings()
-    case_repository = CaseRepository(session)
 
-    retrieval_service = RetrievalService(
-        case_repository=case_repository,
-        document_repository=DocumentRepository(session),
-        retrieval_repository=RetrievalRepository(session),
-        embedding_provider=get_embedding_provider(),
+    case_reader = build_case_reader(
+        session=session,
+    )
+
+    retrieval_searcher = build_retrieval_searcher(
+        session=session,
     )
 
     answer_service = AnswerService(
-        retrieval_service=retrieval_service,
+        retrieval_service=retrieval_searcher,
         generation_provider=get_generation_provider(),
         context_builder=EvidenceContextBuilder(
-            max_context_chars=settings.answer_context_max_chars,
-            max_source_chars=settings.answer_source_max_chars,
+            max_context_chars=(
+                settings.answer_context_max_chars
+            ),
+            max_source_chars=(
+                settings.answer_source_max_chars
+            ),
         ),
     )
 
     return InvestigationService(
         settings=settings,
-        case_repository=case_repository,
-        investigation_repository=InvestigationRepository(session),
-        retrieval_service=retrieval_service,
+        case_reader=case_reader,
+        investigation_repository=InvestigationRepository(
+            session
+        ),
+        retrieval_service=retrieval_searcher,
         answer_service=answer_service,
     )
 
@@ -89,7 +169,9 @@ async def list_investigations(
     case_id: UUID,
     service: InvestigationServiceDep,
 ) -> list[InvestigationRunResponse]:
-    return await service.list(case_id=case_id)
+    return await service.list(
+        case_id=case_id
+    )
 
 
 @router.get(

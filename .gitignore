@@ -19,7 +19,7 @@ dist/
 build/
 *.egg-info/
 
-# Node / Next.js
+# Node / frontend
 node_modules/
 .next/
 out/
@@ -64,3 +64,18 @@ data/synthetic/casemesh-ai-dataset-v1.0/*
 
 # Evaluation files can be added selectively later
 data/evaluation/private/
+
+# Azure / Entra temporary request payloads
+apps/api/api-scope-body.json
+apps/api/api-token-version-body.json
+apps/api/spa-body.json
+
+# Local Azure auth configuration backups
+apps/web/auth-config-backup.json
+apps/web/auth-config-update.json
+
+# Temporary end-to-end validation evidence
+azure-evidence-test.txt
+frontend-evidence-test.txt
+# Generated Bicep ARM template
+infrastructure/azure/main.json
