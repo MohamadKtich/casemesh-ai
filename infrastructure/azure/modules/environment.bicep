@@ -12,6 +12,18 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2026-01-01'
       destination: 'azure-monitor'
     }
 
+    peerAuthentication: {
+      mtls: {
+        enabled: false
+      }
+    }
+
+    peerTrafficConfiguration: {
+      encryption: {
+        enabled: false
+      }
+    }
+
     publicNetworkAccess: 'Enabled'
     zoneRedundant: false
   }
