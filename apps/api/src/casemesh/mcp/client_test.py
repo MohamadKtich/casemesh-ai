@@ -6,7 +6,6 @@ import sys
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-
 DEFAULT_CASE_ID = "912ec51e-2a58-4a9c-9737-970327757211"
 
 
@@ -39,66 +38,65 @@ async def main() -> None:
     ) as (
         read_stream,
         write_stream,
-    ):
-        async with ClientSession(
-            read_stream,
-            write_stream,
-        ) as session:
-            await session.initialize()
+    ), ClientSession(
+        read_stream,
+        write_stream,
+    ) as session:
+        await session.initialize()
 
-            tools_result = await session.list_tools()
+        tools_result = await session.list_tools()
 
-            print(
-                "TOOLS=",
-                [tool.name for tool in tools_result.tools],
+        print(
+            "TOOLS=",
+            [tool.name for tool in tools_result.tools],
+        )
+
+        result = await session.call_tool(
+            "get_case_status",
+            arguments={
+                "case_id": case_id,
+            },
+        )
+
+        payload = result.model_dump(
+            mode="json",
+            by_alias=True,
+        )
+
+        print("CALL RESULT=")
+        print(
+            json.dumps(
+                payload,
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+
+        if result.is_error:
+            raise RuntimeError(
+                "MCP get_case_status returned an error."
             )
 
-            result = await session.call_tool(
-                "get_case_status",
-                arguments={
-                    "case_id": case_id,
-                },
+        structured = result.structured_content
+
+        if not structured:
+            raise RuntimeError(
+                "MCP get_case_status returned no structured content."
             )
 
-            payload = result.model_dump(
-                mode="json",
-                by_alias=True,
-            )
-
-            print("CALL RESULT=")
-            print(
-                json.dumps(
-                    payload,
-                    indent=2,
-                    ensure_ascii=False,
-                )
-            )
-
-            if result.is_error:
-                raise RuntimeError(
-                    "MCP get_case_status returned an error."
-                )
-
-            structured = result.structured_content
-
-            if not structured:
-                raise RuntimeError(
-                    "MCP get_case_status returned no structured content."
-                )
-
-            print("MCP ROUND-TRIP PASS")
-            print(
-                "CASE_NUMBER=",
-                structured.get("case_number"),
-            )
-            print(
-                "STATUS=",
-                structured.get("status"),
-            )
-            print(
-                "PRIORITY=",
-                structured.get("priority"),
-            )
+        print("MCP ROUND-TRIP PASS")
+        print(
+            "CASE_NUMBER=",
+            structured.get("case_number"),
+        )
+        print(
+            "STATUS=",
+            structured.get("status"),
+        )
+        print(
+            "PRIORITY=",
+            structured.get("priority"),
+        )
 
 
 if __name__ == "__main__":

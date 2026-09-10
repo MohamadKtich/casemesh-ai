@@ -4,17 +4,12 @@ from uuid import UUID
 from fastapi import HTTPException, status
 
 from casemesh.core.config import Settings
-from casemesh.execution import (
-    ExecutionContext,
-    ExecutorRegistry,
-)
+from casemesh.db.models import ActionRequest
+from casemesh.execution import ExecutionContext, ExecutorRegistry
 from casemesh.execution.live import LiveAdapterRegistry
 from casemesh.repositories.actions import ActionRepository
 from casemesh.repositories.cases import CaseRepository
-from casemesh.schemas.actions import (
-    ActionExecutionResponse,
-    ExecutionMode,
-)
+from casemesh.schemas.actions import ActionExecutionResponse, ExecutionMode
 
 
 class ActionExecutionService:
@@ -207,7 +202,7 @@ class ActionExecutionService:
     async def _execute_dry_run(
         self,
         *,
-        action,
+        action: ActionRequest,
         execution_ref: str,
     ) -> ActionExecutionResponse:
         try:
@@ -292,7 +287,7 @@ class ActionExecutionService:
     async def _execute_live(
         self,
         *,
-        action,
+        action: ActionRequest,
         execution_ref: str,
         requested_by: str,
     ) -> ActionExecutionResponse:

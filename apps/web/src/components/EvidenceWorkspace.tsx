@@ -167,6 +167,7 @@ function EvidenceWorkspace({
           )
 
         setDocuments(data)
+        setChunks([])
 
         if (data.length > 0) {
           setSelectedDocument(
@@ -207,7 +208,6 @@ function EvidenceWorkspace({
 
   useEffect(() => {
     if (!selectedDocument) {
-      setChunks([])
       return
     }
 
@@ -337,6 +337,8 @@ function EvidenceWorkspace({
             uploaded.id,
         )
 
+      setChunks([])
+
       setSelectedDocument(
         refreshedDocument ??
           ingested,
@@ -383,6 +385,8 @@ function EvidenceWorkspace({
             )
 
           if (uploaded) {
+            setChunks([])
+
             setSelectedDocument(
               uploaded,
             )
@@ -453,6 +457,8 @@ function EvidenceWorkspace({
       )
 
     if (document) {
+      setChunks([])
+
       setSelectedDocument(
         document,
       )
@@ -970,11 +976,13 @@ function EvidenceWorkspace({
                           ? "document-item active"
                           : "document-item"
                       }
-                      onClick={() =>
+                      onClick={() => {
+                        setChunks([])
+
                         setSelectedDocument(
                           document,
                         )
-                      }
+                      }}
                     >
                       <strong>
                         {document.filename}

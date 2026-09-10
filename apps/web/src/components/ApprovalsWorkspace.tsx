@@ -125,6 +125,8 @@ function ApprovalsWorkspace({
               "awaiting_approval",
           )
 
+        setAuditEvents([])
+
         setSelectedAction(
           pending ??
             data[0] ??
@@ -160,7 +162,6 @@ function ApprovalsWorkspace({
 
   useEffect(() => {
     if (!selectedAction) {
-      setAuditEvents([])
       return
     }
 
@@ -408,6 +409,8 @@ function ApprovalsWorkspace({
                           : "document-item"
                       }
                       onClick={() => {
+                        setAuditEvents([])
+
                         setSelectedAction(
                           action,
                         )

@@ -149,6 +149,8 @@ function ActionsWorkspace({
           data[0] ??
           null
 
+        setAuditEvents([])
+
         setSelectedAction(
           first,
         )
@@ -188,7 +190,6 @@ function ActionsWorkspace({
 
   useEffect(() => {
     if (!selectedAction) {
-      setAuditEvents([])
       return
     }
 
@@ -244,6 +245,8 @@ function ActionsWorkspace({
   function selectAction(
     action: ActionRequestRecord,
   ) {
+    setAuditEvents([])
+
     setSelectedAction(
       action,
     )

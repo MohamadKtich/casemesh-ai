@@ -3,10 +3,8 @@ import json
 import os
 
 import httpx2
-
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
-
 
 DEFAULT_MCP_URL = (
     "https://casemesh-api-dev.lemonwater-0bb11448."
@@ -51,88 +49,86 @@ async def main() -> None:
             "Authorization": f"Bearer {token}",
         },
         follow_redirects=True,
-    ) as http_client:
-        async with streamable_http_client(
-            url,
-            http_client=http_client,
-        ) as (
-            read_stream,
-            write_stream,
-        ):
-            async with ClientSession(
-                read_stream,
-                write_stream,
-            ) as session:
-                await session.initialize()
+    ) as http_client, streamable_http_client(
+        url,
+        http_client=http_client,
+    ) as (
+        read_stream,
+        write_stream,
+    ), ClientSession(
+        read_stream,
+        write_stream,
+    ) as session:
+        await session.initialize()
 
-                result = await session.call_tool(
-                    "search_case_evidence",
-                    arguments={
-                        "case_id": case_id,
-                        "query": query,
-                        "top_k": 3,
-                    },
-                )
+        result = await session.call_tool(
+            "search_case_evidence",
+            arguments={
+                "case_id": case_id,
+                "query": query,
+                "top_k": 3,
+            },
+        )
 
-                payload = result.model_dump(
-                    mode="json",
-                    by_alias=True,
-                )
+        payload = result.model_dump(
+            mode="json",
+            by_alias=True,
+        )
 
-                print("REMOTE MCP CALL RESULT=")
+        print("REMOTE MCP CALL RESULT=")
+        print(
+            json.dumps(
+                payload,
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+
+        if result.is_error:
+            raise RuntimeError(
+                "Remote MCP evidence search failed."
+            )
+
+        structured = result.structured_content
+
+        if not structured:
+            raise RuntimeError(
+                "Remote MCP returned no structured content."
+            )
+
+        if not structured.get("found"):
+            raise RuntimeError(
+                "Remote MCP returned no evidence."
+            )
+
+        print("REMOTE MCP EVIDENCE PASS")
+        print(
+            "MODE=",
+            structured.get("mode"),
+        )
+        print(
+            "EMBEDDING_MODEL=",
+            structured.get("embedding_model"),
+        )
+        print(
+            "RESULT_COUNT=",
+            structured.get("result_count"),
+        )
+
+        results = structured.get("results")
+
+        if isinstance(results, list) and results:
+            first = results[0]
+
+            if isinstance(first, dict):
                 print(
-                    json.dumps(
-                        payload,
-                        indent=2,
-                        ensure_ascii=False,
-                    )
-                )
-
-                if result.is_error:
-                    raise RuntimeError(
-                        "Remote MCP evidence search failed."
-                    )
-
-                structured = result.structured_content
-
-                if not structured:
-                    raise RuntimeError(
-                        "Remote MCP returned no structured content."
-                    )
-
-                if not structured.get("found"):
-                    raise RuntimeError(
-                        "Remote MCP returned no evidence."
-                    )
-
-                print("REMOTE MCP EVIDENCE PASS")
-                print(
-                    "MODE=",
-                    structured.get("mode"),
+                    "TOP_VECTOR_SIMILARITY=",
+                    first.get("vector_similarity"),
                 )
                 print(
-                    "EMBEDDING_MODEL=",
-                    structured.get("embedding_model"),
+                    "TOP_CONTENT=",
+                    first.get("content"),
                 )
-                print(
-                    "RESULT_COUNT=",
-                    structured.get("result_count"),
-                )
-
-                results = structured.get("results")
-
-                if isinstance(results, list) and results:
-                    first = results[0]
-
-                    if isinstance(first, dict):
-                        print(
-                            "TOP_VECTOR_SIMILARITY=",
-                            first.get("vector_similarity"),
-                        )
-                        print(
-                            "TOP_CONTENT=",
-                            first.get("content"),
-                        )
 
 
 if __name__ == "__main__":

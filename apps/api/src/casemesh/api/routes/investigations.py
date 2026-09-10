@@ -29,7 +29,6 @@ from casemesh.services.mcp_retrieval import McpRetrievalService
 from casemesh.services.retrieval import RetrievalService
 from casemesh.services.retrieval_contract import RetrievalSearcher
 
-
 router = APIRouter()
 
 DbSession = Annotated[

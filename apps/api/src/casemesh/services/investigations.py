@@ -5,7 +5,6 @@ from fastapi import HTTPException, status
 
 from casemesh.core.config import Settings
 from casemesh.db.models import InvestigationRun
-from casemesh.services.case_reader import CaseReader
 from casemesh.repositories.investigations import InvestigationRepository
 from casemesh.schemas.investigations import (
     InvestigationCitation,
@@ -15,6 +14,7 @@ from casemesh.schemas.investigations import (
     InvestigationRunResponse,
 )
 from casemesh.services.answers import AnswerService
+from casemesh.services.case_reader import CaseReader
 from casemesh.services.retrieval_contract import RetrievalSearcher
 from casemesh.workflows.investigation import InvestigationWorkflow
 from casemesh.workflows.state import InvestigationState

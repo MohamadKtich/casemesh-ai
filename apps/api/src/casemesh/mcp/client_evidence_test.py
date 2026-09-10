@@ -6,7 +6,6 @@ import sys
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-
 DEFAULT_CASE_ID = "912ec51e-2a58-4a9c-9737-970327757211"
 
 DEFAULT_QUERY = (
@@ -66,89 +65,88 @@ async def main() -> None:
     ) as (
         read_stream,
         write_stream,
-    ):
-        async with ClientSession(
-            read_stream,
-            write_stream,
-        ) as session:
-            await session.initialize()
+    ), ClientSession(
+        read_stream,
+        write_stream,
+    ) as session:
+        await session.initialize()
 
-            tools_result = await session.list_tools()
+        tools_result = await session.list_tools()
 
-            print(
-                "TOOLS=",
-                [tool.name for tool in tools_result.tools],
+        print(
+            "TOOLS=",
+            [tool.name for tool in tools_result.tools],
+        )
+
+        result = await session.call_tool(
+            "search_case_evidence",
+            arguments={
+                "case_id": case_id,
+                "query": query,
+                "top_k": 3,
+            },
+        )
+
+        payload = result.model_dump(
+            mode="json",
+            by_alias=True,
+        )
+
+        print("CALL RESULT=")
+
+        print(
+            json.dumps(
+                payload,
+                indent=2,
+                ensure_ascii=False,
+            )
+        )
+
+        if result.is_error:
+            raise RuntimeError(
+                "MCP search_case_evidence returned an error."
             )
 
-            result = await session.call_tool(
-                "search_case_evidence",
-                arguments={
-                    "case_id": case_id,
-                    "query": query,
-                    "top_k": 3,
-                },
+        structured = result.structured_content
+
+        if not structured:
+            raise RuntimeError(
+                "MCP evidence search returned no structured content."
             )
 
-            payload = result.model_dump(
-                mode="json",
-                by_alias=True,
+        if not structured.get("found"):
+            raise RuntimeError(
+                "MCP evidence search returned no evidence."
             )
 
-            print("CALL RESULT=")
+        print("MCP EVIDENCE SEARCH PASS")
+        print(
+            "MODE=",
+            structured.get("mode"),
+        )
+        print(
+            "EMBEDDING_MODEL=",
+            structured.get("embedding_model"),
+        )
+        print(
+            "RESULT_COUNT=",
+            structured.get("result_count"),
+        )
 
-            print(
-                json.dumps(
-                    payload,
-                    indent=2,
-                    ensure_ascii=False,
+        results = structured.get("results")
+
+        if isinstance(results, list) and results:
+            first = results[0]
+
+            if isinstance(first, dict):
+                print(
+                    "TOP_VECTOR_SIMILARITY=",
+                    first.get("vector_similarity"),
                 )
-            )
-
-            if result.is_error:
-                raise RuntimeError(
-                    "MCP search_case_evidence returned an error."
+                print(
+                    "TOP_CONTENT=",
+                    first.get("content"),
                 )
-
-            structured = result.structured_content
-
-            if not structured:
-                raise RuntimeError(
-                    "MCP evidence search returned no structured content."
-                )
-
-            if not structured.get("found"):
-                raise RuntimeError(
-                    "MCP evidence search returned no evidence."
-                )
-
-            print("MCP EVIDENCE SEARCH PASS")
-            print(
-                "MODE=",
-                structured.get("mode"),
-            )
-            print(
-                "EMBEDDING_MODEL=",
-                structured.get("embedding_model"),
-            )
-            print(
-                "RESULT_COUNT=",
-                structured.get("result_count"),
-            )
-
-            results = structured.get("results")
-
-            if isinstance(results, list) and results:
-                first = results[0]
-
-                if isinstance(first, dict):
-                    print(
-                        "TOP_VECTOR_SIMILARITY=",
-                        first.get("vector_similarity"),
-                    )
-                    print(
-                        "TOP_CONTENT=",
-                        first.get("content"),
-                    )
 
 
 if __name__ == "__main__":

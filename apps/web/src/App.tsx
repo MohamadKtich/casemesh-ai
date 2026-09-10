@@ -165,10 +165,6 @@ function App() {
       !isAuthenticated ||
       authBusy
     ) {
-      setApiInfo(
-        null,
-      )
-
       return () => {
         controller.abort()
       }
@@ -214,23 +210,20 @@ function App() {
   ])
 
 
-  useEffect(() => {
-    if (
-      !isAuthenticated &&
-      !authBusy
-    ) {
-      setActiveView(
-        "overview",
-      )
+  const visibleApiInfo =
+    isAuthenticated && !authBusy
+      ? apiInfo
+      : null
 
-      setSelectedCase(
-        null,
-      )
-    }
-  }, [
-    isAuthenticated,
-    authBusy,
-  ])
+  const visibleActiveView: ActiveView =
+    isAuthenticated
+      ? activeView
+      : "overview"
+
+  const visibleSelectedCase =
+    isAuthenticated
+      ? selectedCase
+      : null
 
 
   const connectionLabel =
@@ -246,6 +239,18 @@ function App() {
       return
     }
 
+    setActiveView(
+      "overview",
+    )
+
+    setSelectedCase(
+      null,
+    )
+
+    setApiInfo(
+      null,
+    )
+
     void instance.loginRedirect(
       loginRequest,
     )
@@ -256,6 +261,18 @@ function App() {
     if (authBusy) {
       return
     }
+
+    setActiveView(
+      "overview",
+    )
+
+    setSelectedCase(
+      null,
+    )
+
+    setApiInfo(
+      null,
+    )
 
     if (account) {
       void instance.logoutRedirect({
@@ -479,7 +496,7 @@ function App() {
             </div>
 
             <div className="metric-detail">
-              {apiInfo?.service ??
+              {visibleApiInfo?.service ??
                 "CaseMesh API"}
             </div>
           </article>
@@ -490,7 +507,7 @@ function App() {
             </div>
 
             <div className="metric-value">
-              {apiInfo?.version ??
+              {visibleApiInfo?.version ??
                 (isAuthenticated
                   ? "Loading"
                   : "Protected")}
@@ -559,7 +576,7 @@ function App() {
                 <span>Service</span>
 
                 <strong>
-                  {apiInfo?.service ??
+                  {visibleApiInfo?.service ??
                     "CaseMesh API"}
                 </strong>
               </div>
@@ -568,7 +585,7 @@ function App() {
                 <span>Version</span>
 
                 <strong>
-                  {apiInfo?.version ??
+                  {visibleApiInfo?.version ??
                     (isAuthenticated
                       ? "Loading"
                       : "Protected")}
@@ -591,7 +608,7 @@ function App() {
                 </span>
 
                 <strong>
-                  {apiInfo?.mcp ??
+                  {visibleApiInfo?.mcp ??
                     "/mcp/"}
                 </strong>
               </div>
@@ -881,36 +898,36 @@ function App() {
 
 
   function pageTitle(): string {
-    if (activeView === "overview") {
+    if (visibleActiveView === "overview") {
       return "Case Intelligence"
     }
 
-    if (activeView === "evidence") {
-      return selectedCase
-        ? `${selectedCase.case_number} Evidence`
+    if (visibleActiveView === "evidence") {
+      return visibleSelectedCase
+        ? `${visibleSelectedCase.case_number} Evidence`
         : "Evidence"
     }
 
-    if (activeView === "investigations") {
-      return selectedCase
-        ? `${selectedCase.case_number} Investigations`
+    if (visibleActiveView === "investigations") {
+      return visibleSelectedCase
+        ? `${visibleSelectedCase.case_number} Investigations`
         : "Investigations"
     }
 
-    if (activeView === "approvals") {
-      return selectedCase
-        ? `${selectedCase.case_number} Approvals`
+    if (visibleActiveView === "approvals") {
+      return visibleSelectedCase
+        ? `${visibleSelectedCase.case_number} Approvals`
         : "Approvals"
     }
 
-    if (activeView === "actions") {
-      return selectedCase
-        ? `${selectedCase.case_number} Actions`
+    if (visibleActiveView === "actions") {
+      return visibleSelectedCase
+        ? `${visibleSelectedCase.case_number} Actions`
         : "Actions"
     }
 
-    if (selectedCase) {
-      return selectedCase.case_number
+    if (visibleSelectedCase) {
+      return visibleSelectedCase.case_number
     }
 
     return "Cases"
@@ -939,7 +956,7 @@ function App() {
         <nav className="navigation">
           <button
             className={
-              activeView === "overview"
+              visibleActiveView === "overview"
                 ? "nav-item active"
                 : "nav-item"
             }
@@ -952,7 +969,7 @@ function App() {
 
           <button
             className={
-              activeView === "cases"
+              visibleActiveView === "cases"
                 ? "nav-item active"
                 : "nav-item"
             }
@@ -972,7 +989,7 @@ function App() {
 
           <button
             className={
-              activeView === "evidence"
+              visibleActiveView === "evidence"
                 ? "nav-item active"
                 : "nav-item"
             }
@@ -992,7 +1009,7 @@ function App() {
 
           <button
             className={
-              activeView === "investigations"
+              visibleActiveView === "investigations"
                 ? "nav-item active"
                 : "nav-item"
             }
@@ -1012,7 +1029,7 @@ function App() {
 
           <button
             className={
-              activeView === "approvals"
+              visibleActiveView === "approvals"
                 ? "nav-item active"
                 : "nav-item"
             }
@@ -1032,7 +1049,7 @@ function App() {
 
           <button
             className={
-              activeView === "actions"
+              visibleActiveView === "actions"
                 ? "nav-item active"
                 : "nav-item"
             }
@@ -1160,56 +1177,56 @@ function App() {
           </div>
         </header>
 
-        {activeView === "overview" &&
+        {visibleActiveView === "overview" &&
           renderOverview()}
 
         {isAuthenticated &&
-          activeView === "cases" &&
-          !selectedCase && (
+          visibleActiveView === "cases" &&
+          !visibleSelectedCase && (
             <CasesWorkspace
               onOpenCase={openCase}
             />
           )}
 
         {isAuthenticated &&
-          activeView === "cases" &&
+          visibleActiveView === "cases" &&
           selectedCase &&
           renderCaseDetails(
             selectedCase,
           )}
 
         {isAuthenticated &&
-          activeView === "evidence" &&
-          selectedCase && (
+          visibleActiveView === "evidence" &&
+          visibleSelectedCase && (
             <EvidenceWorkspace
-              caseRecord={selectedCase}
+              caseRecord={visibleSelectedCase}
               onBack={backToSelectedCase}
             />
           )}
 
         {isAuthenticated &&
-          activeView === "investigations" &&
-          selectedCase && (
+          visibleActiveView === "investigations" &&
+          visibleSelectedCase && (
             <InvestigationsWorkspace
-              caseRecord={selectedCase}
+              caseRecord={visibleSelectedCase}
               onBack={backToSelectedCase}
             />
           )}
 
         {isAuthenticated &&
-          activeView === "approvals" &&
-          selectedCase && (
+          visibleActiveView === "approvals" &&
+          visibleSelectedCase && (
             <ApprovalsWorkspace
-              caseRecord={selectedCase}
+              caseRecord={visibleSelectedCase}
               onBack={backToSelectedCase}
             />
           )}
 
         {isAuthenticated &&
-          activeView === "actions" &&
-          selectedCase && (
+          visibleActiveView === "actions" &&
+          visibleSelectedCase && (
             <ActionsWorkspace
-              caseRecord={selectedCase}
+              caseRecord={visibleSelectedCase}
               onBack={backToSelectedCase}
             />
           )}

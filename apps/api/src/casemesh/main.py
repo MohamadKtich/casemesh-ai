@@ -11,7 +11,6 @@ from casemesh.core.logging import configure_logging, get_logger
 from casemesh.mcp.auth import BearerTokenAuthMiddleware
 from casemesh.mcp.server import server as mcp_server
 
-
 settings = get_settings()
 
 configure_logging(settings.log_level)

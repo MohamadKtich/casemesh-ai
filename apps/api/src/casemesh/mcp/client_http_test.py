@@ -2,10 +2,8 @@ import asyncio
 import os
 
 import httpx2
-
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
-
 
 DEFAULT_MCP_URL = "http://127.0.0.1:8000/mcp/"
 DEFAULT_TIMEOUT_SECONDS = 120.0
@@ -65,37 +63,35 @@ async def main() -> None:
         },
         follow_redirects=True,
         timeout=timeout_seconds,
-    ) as http_client:
-        async with streamable_http_client(
-            url,
-            http_client=http_client,
-        ) as (
-            read_stream,
-            write_stream,
-        ):
-            async with ClientSession(
-                read_stream,
-                write_stream,
-            ) as session:
-                initialize_result = await session.initialize()
+    ) as http_client, streamable_http_client(
+        url,
+        http_client=http_client,
+    ) as (
+        read_stream,
+        write_stream,
+    ), ClientSession(
+        read_stream,
+        write_stream,
+    ) as session:
+        initialize_result = await session.initialize()
 
-                print("MCP HTTP INITIALIZE PASS")
-                print(
-                    "SERVER=",
-                    initialize_result.server_info.name,
-                )
+        print("MCP HTTP INITIALIZE PASS")
+        print(
+            "SERVER=",
+            initialize_result.server_info.name,
+        )
 
-                tools_result = await session.list_tools()
+        tools_result = await session.list_tools()
 
-                print(
-                    "TOOLS=",
-                    [
-                        tool.name
-                        for tool in tools_result.tools
-                    ],
-                )
+        print(
+            "TOOLS=",
+            [
+                tool.name
+                for tool in tools_result.tools
+            ],
+        )
 
-                print("MCP HTTP AUTH PASS")
+        print("MCP HTTP AUTH PASS")
 
 
 if __name__ == "__main__":

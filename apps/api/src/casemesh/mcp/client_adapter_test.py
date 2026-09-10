@@ -5,7 +5,6 @@ from uuid import UUID
 from casemesh.mcp.client import CaseMeshMcpClient
 from casemesh.services.mcp_retrieval import McpRetrievalService
 
-
 DEFAULT_MCP_URL = (
     "https://casemesh-api-dev.lemonwater-0bb11448."
     "uaenorth.azurecontainerapps.io/mcp/"

@@ -1,7 +1,6 @@
 from typing import Any
 
 import httpx2
-
 from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
 
@@ -63,44 +62,42 @@ class CaseMeshMcpClient:
             },
             follow_redirects=True,
             timeout=self._timeout_seconds,
-        ) as http_client:
-            async with streamable_http_client(
-                self._url,
-                http_client=http_client,
-            ) as (
-                read_stream,
-                write_stream,
-            ):
-                async with ClientSession(
-                    read_stream,
-                    write_stream,
-                ) as session:
-                    await session.initialize()
+        ) as http_client, streamable_http_client(
+            self._url,
+            http_client=http_client,
+        ) as (
+            read_stream,
+            write_stream,
+        ), ClientSession(
+            read_stream,
+            write_stream,
+        ) as session:
+            await session.initialize()
 
-                    result = await session.call_tool(
-                        tool_name,
-                        arguments=arguments,
-                    )
+            result = await session.call_tool(
+                tool_name,
+                arguments=arguments,
+            )
 
-                    if result.is_error:
-                        message = "MCP tool call failed."
+            if result.is_error:
+                message = "MCP tool call failed."
 
-                        if result.content:
-                            first = result.content[0]
-                            text = getattr(first, "text", None)
+                if result.content:
+                    first = result.content[0]
+                    text = getattr(first, "text", None)
 
-                            if text:
-                                message = str(text)
+                    if text:
+                        message = str(text)
 
-                        raise RuntimeError(
-                            f"{tool_name}: {message}"
-                        )
+                raise RuntimeError(
+                    f"{tool_name}: {message}"
+                )
 
-                    structured = result.structured_content
+            structured = result.structured_content
 
-                    if not isinstance(structured, dict):
-                        raise RuntimeError(
-                            f"{tool_name} returned no structured content."
-                        )
+            if not isinstance(structured, dict):
+                raise RuntimeError(
+                    f"{tool_name} returned no structured content."
+                )
 
-                    return structured
+            return structured

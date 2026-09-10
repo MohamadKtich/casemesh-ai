@@ -58,4 +58,4 @@ indent-style = "space"
 python_version = "3.12"
 strict = true
 warn_unused_configs = true
-files = ["src", "tests"]
+files = ["src"]

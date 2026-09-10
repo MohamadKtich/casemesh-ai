@@ -5,7 +5,6 @@ from casemesh.mcp.tools import (
     register_evidence_tools,
 )
 
-
 server = MCPServer(
     name="casemesh-mcp",
     title="CaseMesh AI MCP Server",
