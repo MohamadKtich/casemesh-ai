@@ -3,8 +3,9 @@ import json
 import os
 import sys
 
-from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+
+from mcp import ClientSession, StdioServerParameters
 
 DEFAULT_CASE_ID = "912ec51e-2a58-4a9c-9737-970327757211"
 

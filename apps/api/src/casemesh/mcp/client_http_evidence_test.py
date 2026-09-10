@@ -3,8 +3,9 @@ import json
 import os
 
 import httpx2
-from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
+
+from mcp import ClientSession
 
 DEFAULT_MCP_URL = (
     "https://casemesh-api-dev.lemonwater-0bb11448."

@@ -1,8 +1,9 @@
 from typing import Any
 
 import httpx2
-from mcp import ClientSession
 from mcp.client.streamable_http import streamable_http_client
+
+from mcp import ClientSession
 
 
 class CaseMeshMcpClient:
