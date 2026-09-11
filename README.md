@@ -1,159 +1,391 @@
 # CaseMesh AI
 
-> **Status:** Repository foundation complete. Implementation begins in the next milestone.
+> **Status:** Active development. Core application, MCP integration, Azure dev deployment, and hardened CI/CD pipelines are operational.
 
-CaseMesh AI is a production-oriented, full-stack, agentic AI case investigation and resolution platform.  
-It is designed to combine **hybrid RAG**, **structured agent orchestration**, **deterministic tools**, **human approval**, **MCP-based business actions**, and **multi-cloud AI providers** while remaining **local-first and zero-cost-first** during development.
+CaseMesh AI is a full-stack, agentic AI case investigation and resolution platform designed for evidence-grounded reasoning, controlled automation, and auditable business actions.
 
-## What CaseMesh AI is designed to do
+The project combines hybrid retrieval, structured AI orchestration, deterministic tools, human approval, MCP-based integrations, authentication, cloud deployment, and production-oriented delivery practices while following a local-first and zero-cost-first engineering strategy.
 
-A user creates a case, uploads evidence, and starts an AI-assisted investigation. CaseMesh AI then:
+## What CaseMesh AI does
 
-1. Ingests and validates evidence.
-2. Indexes documents for semantic and lexical retrieval.
-3. Uses hybrid RAG to retrieve grounded evidence with citations.
-4. Orchestrates focused reasoning roles with LangGraph.
-5. Uses deterministic tools for calculations and structured operations.
-6. Produces a cited resolution draft.
-7. Requires human approval before sensitive or write-side actions.
-8. Executes approved integrations through an MCP gateway.
-9. Records audit, observability, evaluation, and cost data.
+A user can create and investigate a case through a workflow that can:
 
-## Design principles
+1. ingest and validate evidence,
+2. retrieve relevant knowledge using semantic and lexical search,
+3. generate evidence-grounded findings,
+4. orchestrate specialized investigation steps,
+5. use deterministic tools for structured operations,
+6. produce a resolution recommendation,
+7. protect sensitive actions behind explicit authorization,
+8. expose approved business capabilities through MCP,
+9. authenticate users through Microsoft Entra ID,
+10. record operational state for audit and troubleshooting.
 
-- **Local-first:** most development runs locally with Docker, PostgreSQL, pgvector, MinIO, and Ollama.
-- **Zero-cost-first:** cloud services are enabled only when they add measurable value.
-- **Hybrid retrieval:** vector similarity + PostgreSQL full-text search + merge + rerank.
-- **Focused orchestration:** not every logical role is a free-form autonomous agent.
-- **Deterministic where possible:** calculations and routine transformations belong in code.
-- **Human-in-the-loop:** financial, write-side, or high-impact actions require approval.
-- **Provider abstraction:** Ollama, Azure AI, AWS Bedrock, and optional GCP Vertex are accessed behind a common provider layer.
-- **Traceability:** every recommendation should be grounded in evidence and citations.
-- **Operational visibility:** model calls, tool calls, latency, errors, token use, and estimated cost are observable.
+## Engineering principles
 
-## Planned technology stack
+- **Local-first:** core development can run locally without permanent cloud infrastructure.
+- **Zero-cost-first:** cloud resources are used only when they provide concrete validation or portfolio value.
+- **Evidence-grounded AI:** retrieval and citations are preferred over unsupported generation.
+- **Deterministic where possible:** calculations and structured transformations belong in code.
+- **Controlled agentic behavior:** AI does not receive unrestricted write access.
+- **Human and policy controls:** high-impact actions require explicit authorization.
+- **Provider abstraction:** AI providers remain replaceable behind application-level interfaces.
+- **Defense in depth:** repository, workflow, identity, container, API, and cloud controls are layered.
+- **Observable delivery:** CI, deployment verification, health checks, and rollback behavior are explicit.
+
+## Current architecture
+
+```text
+Browser
+  |
+  v
+Azure Static Web Apps
+React + Vite + TypeScript
+  |
+  | Microsoft Entra authentication
+  v
+Azure Container Apps
+FastAPI / Python 3.12
+  |
+  +--> Case management
+  +--> Evidence processing
+  +--> Hybrid retrieval
+  +--> Agentic investigation workflows
+  +--> Deterministic tools
+  +--> MCP server and client
+  +--> Controlled business actions
+  |
+  v
+PostgreSQL + pgvector
+```
+
+The API is deployed independently from the frontend. This keeps runtime, release, and rollback concerns separated.
+
+## Technology stack
 
 ### Frontend
-- Next.js
+
+- React 19
 - TypeScript
+- Vite
+- Microsoft Authentication Library (MSAL)
+- Oxlint
 
 ### Backend
+
 - Python 3.12
 - FastAPI
 - Pydantic
 - SQLAlchemy
-- Alembic
-
-### AI & orchestration
-- LangGraph
-- Ollama / Qwen3 8B for local development
-- Azure AI as primary cloud reasoning provider
-- AWS Bedrock as secondary / safety-oriented provider
-- GCP Vertex as optional multimodal provider
-
-### Data
 - PostgreSQL
 - pgvector
-- PostgreSQL Full-Text Search
-- MinIO locally
-- Azure Blob Storage in cloud validation
+- pytest
+- Ruff
+- MyPy
 
-### Platform & operations
-- Docker / Docker Compose
-- Terraform
+### AI and orchestration
+
+- retrieval-augmented generation
+- semantic and lexical retrieval
+- structured investigation workflows
+- deterministic tools
+- configurable embedding and generation providers
+- MCP server, client, tools, authentication, and transports
+
+### Platform
+
+- Docker
+- Docker Compose
+- Azure Container Apps
+- Azure Static Web Apps
+- Azure Bicep
+- GitHub Container Registry
 - GitHub Actions
-- OpenTelemetry
-- Azure Application Insights / local tracing
-- Cost tracking and budget guardrails
+- Microsoft Entra ID
+- GitHub OIDC federation with Azure
 
-## High-level architecture
+## Hybrid retrieval
 
-![Updated System Architecture](docs/images/casemesh_ai_system_architecture_overview.png)
+CaseMesh combines semantic and lexical retrieval instead of depending on a single search strategy.
 
-## Hybrid RAG
+```text
+User Query
+   |
+   +--> Semantic Retrieval
+   |       |
+   |       v
+   |    pgvector
+   |
+   +--> Lexical Retrieval
+           |
+           v
+   PostgreSQL Full-Text Search
+           |
+           v
+        Merge
+           |
+           v
+        Rerank
+           |
+           v
+   Grounded Context
+           |
+           v
+      AI Synthesis
+```
 
-![Hybrid RAG Pipeline](docs/images/casemesh_ai_hybrid_rag_pipeline.png)
+The application is designed to preserve source metadata so generated findings can remain traceable to retrieved evidence.
 
-## Orchestrated workflow
+## Agentic workflow design
 
-![Orchestrated Agent Workflow](docs/images/casemesh_ai_orchestrated_workflow_diagram.png)
+CaseMesh deliberately avoids turning every operation into an unrestricted autonomous agent.
+
+The architecture separates:
+
+- planning and workflow coordination,
+- knowledge retrieval,
+- evidence analysis,
+- policy and risk reasoning,
+- deterministic calculations,
+- resolution generation,
+- approval and action execution.
+
+Read-only operations can be automated more freely.
+
+Write-side or high-impact operations remain behind explicit application controls.
+
+## MCP integration
+
+CaseMesh includes an MCP integration layer for controlled external actions.
+
+The implementation includes:
+
+- MCP server,
+- MCP client,
+- authenticated MCP access,
+- structured tool definitions,
+- HTTP and stdio transport support,
+- action authorization,
+- integration with investigation workflows.
+
+MCP is used as an integration boundary rather than as a replacement for normal internal application functions.
+
+## Authentication
+
+The deployed application uses Microsoft Entra ID.
+
+The frontend authenticates users through MSAL, while Azure Container Apps authentication protects API access.
+
+Public health endpoints remain available for operational readiness checks.
+
+## CI quality gates
+
+Three independent CI workflows run automatically for changes to `main` and pull requests targeting `main`.
+
+### API CI
+
+Validates:
+
+- dependency integrity,
+- Ruff,
+- MyPy,
+- pytest.
+
+### Web CI
+
+Validates:
+
+- reproducible dependency installation with `npm ci`,
+- Oxlint,
+- production frontend build.
+
+### Platform CI
+
+Validates:
+
+- Docker Compose configuration,
+- API container build,
+- non-root container runtime user,
+- expected container working directory,
+- Azure CLI availability,
+- Azure Bicep compilation.
+
+## Deployment model
+
+Deployments to the Azure dev environment are intentionally manual.
+
+This prevents every source change from creating unnecessary cloud revisions or consuming cloud resources.
+
+### API deployment
+
+The API deployment workflow:
+
+1. requires the `main` branch,
+2. requires explicit `DEPLOY` confirmation,
+3. builds the API container,
+4. publishes an immutable image to GHCR using the Git commit SHA,
+5. authenticates to Azure through GitHub OIDC,
+6. updates the Azure Container App,
+7. waits for the exact new revision,
+8. verifies `/health/ready`,
+9. verifies the exact image and revision,
+10. rolls back to the previous image if deployment verification fails.
+
+Container images use immutable references in the form:
+
+```text
+ghcr.io/mohamadktich/casemesh-api:<git-sha>
+```
+
+### Frontend deployment
+
+The frontend deployment workflow:
+
+1. requires the `main` branch,
+2. requires explicit `DEPLOY` confirmation,
+3. validates required deployment configuration,
+4. installs dependencies with `npm ci`,
+5. runs linting,
+6. creates the production Vite build,
+7. verifies the configured production API endpoint is embedded,
+8. deploys the prebuilt application to Azure Static Web Apps,
+9. verifies the production website responds successfully.
+
+## CI/CD security
+
+The GitHub Actions configuration is hardened with:
+
+- minimum required workflow permissions,
+- GitHub Actions pinned to immutable commit SHAs,
+- `persist-credentials: false` on repository checkout,
+- Azure authentication through OIDC instead of a stored Azure client secret,
+- restricted `packages: write` permission only where GHCR publishing is required,
+- `id-token: write` only for the Azure deployment workflow,
+- repository variables for non-secret deployment configuration,
+- GitHub Secrets for sensitive deployment tokens,
+- manual deployment confirmation,
+- immutable API image tags,
+- post-deployment verification and API rollback.
+
+## Secret handling
+
+Secrets are not committed to Git.
+
+Local environment files such as `.env` and `.env.local` are ignored.
+
+Azure infrastructure secret inputs are declared as secure Bicep parameters.
+
+The repository contains only safe example configuration files.
+
+## Azure dev environment
+
+Current dev deployment:
+
+```text
+Frontend
+https://zealous-pebble-08744c900.5.azurestaticapps.net
+
+API
+https://casemesh-api-dev.lemonwater-0bb11448.uaenorth.azurecontainerapps.io
+
+API readiness
+https://casemesh-api-dev.lemonwater-0bb11448.uaenorth.azurecontainerapps.io/health/ready
+```
+
+The Azure environment exists for development validation and portfolio demonstration. It is not presented as a production SLA environment.
+
+## Zero-cost-first cloud strategy
+
+CaseMesh avoids requiring permanently paid infrastructure for normal development.
+
+The project favors:
+
+- local development,
+- open-source components,
+- free service tiers where appropriate,
+- scale-to-zero cloud compute,
+- small dev resource limits,
+- targeted cloud validation,
+- manual deployments instead of deployment on every commit.
+
+The architecture can be expanded later without making paid infrastructure a prerequisite for contributing to or evaluating the project.
 
 ## Repository structure
 
 ```text
 casemesh-ai/
-├── apps/
-│   ├── api/                    # FastAPI backend (next milestone)
-│   └── web/                    # Next.js frontend (later milestone)
-├── packages/
-│   └── shared/                 # Shared schemas/types/contracts
-├── infrastructure/
-│   ├── docker/                 # Docker-related configuration
-│   └── terraform/              # Cloud Infrastructure as Code
-├── data/
-│   ├── raw/                    # Local raw data; ignored by Git
-│   ├── synthetic/              # Synthetic CaseMesh dataset location
-│   └── evaluation/             # Evaluation / ground-truth data
-├── docs/
-│   ├── architecture/
-│   │   └── adr/                # Architecture Decision Records
-│   └── images/                 # Architecture diagrams
-├── scripts/                    # Windows setup and validation scripts
-├── tests/                      # Cross-project tests
-├── .github/                    # GitHub templates
-├── .env.example
-├── .gitignore
-├── ARCHITECTURE.md
-├── ROADMAP.md
-├── CONTRIBUTING.md
-├── SECURITY.md
-└── LICENSE
+|
++-- apps/
+|   +-- api/                     # FastAPI backend
+|   +-- web/                     # React + Vite frontend
+|
++-- infrastructure/
+|   +-- azure/                   # Azure Bicep infrastructure
+|
++-- data/                        # Local/synthetic/evaluation data
+|
++-- docs/
+|   +-- architecture/            # Architecture records
+|   +-- images/                  # Architecture diagrams
+|
++-- scripts/                     # Validation and utility scripts
+|
++-- .github/
+|   +-- workflows/
+|       +-- api-ci.yml
+|       +-- api-deploy-dev.yml
+|       +-- platform-ci.yml
+|       +-- web-ci.yml
+|       +-- web-deploy-dev.yml
+|
++-- ARCHITECTURE.md
++-- CONTRIBUTING.md
++-- ROADMAP.md
++-- SECURITY.md
++-- README.md
 ```
 
-## Dataset placement
-
-Place the downloaded **CaseMesh AI Dataset v1.0** inside:
+## Active GitHub Actions workflows
 
 ```text
-data/synthetic/casemesh-ai-dataset-v1.0/
+CaseMesh API CI
+CaseMesh Web CI
+CaseMesh Platform CI
+CaseMesh API Deploy Dev
+CaseMesh Web Deploy Dev
 ```
 
-The repository intentionally does **not** include private, large, or sensitive datasets by default.
-
-## Current milestone
-
-### M0 — Repository Foundation ✅
-- Architecture decisions documented
-- Repo structure prepared
-- Security and contribution rules prepared
-- Environment verification script prepared
-- Architecture diagrams included
-- Dataset location prepared
-
-### Next milestone
-**M1 — FastAPI Backend Foundation**
-
-The next implementation milestone will create:
-
-- Python 3.12 virtual environment
-- FastAPI application
-- configuration layer
-- structured logging
-- `/health` endpoint
-- pytest setup
-- Ruff
-- mypy
-- Docker-ready backend foundation
+Diagnostic deployment workflows used during initial OIDC and GHCR validation were intentionally removed after the permanent deployment workflows were verified.
 
 ## Documentation
 
 - [Architecture](ARCHITECTURE.md)
-- [Roadmap](ROADMAP.md)
-- [Contribution Guide](CONTRIBUTING.md)
 - [Security Policy](SECURITY.md)
+- [Contribution Guide](CONTRIBUTING.md)
+- [Roadmap](ROADMAP.md)
 - [GitHub Setup](docs/GITHUB_SETUP.md)
 - [Development Setup](docs/DEVELOPMENT_SETUP.md)
 - [Project Checklist](docs/PROJECT_CHECKLIST.md)
+
+## Project positioning
+
+CaseMesh AI is an engineering portfolio project focused on demonstrating practical experience across:
+
+- AI engineering,
+- RAG systems,
+- agentic workflows,
+- MCP,
+- backend engineering,
+- frontend integration,
+- authentication,
+- cloud architecture,
+- Infrastructure as Code,
+- containerization,
+- CI/CD,
+- deployment safety,
+- security-oriented engineering.
+
+The goal is not to maximize the number of technologies used. The goal is to show how AI capabilities can be integrated into a controlled, testable, deployable software system.
 
 ## License
 
