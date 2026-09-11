@@ -15,8 +15,8 @@ param containerAppName string = 'casemesh-api-dev'
 @description('CaseMesh frontend Static Web App name.')
 param staticWebAppName string = 'casemesh-web-dev'
 
-@description('CaseMesh API container image.')
-param containerImage string = 'ghcr.io/mohamadktich/casemesh-api:phase31c1-cors'
+@description('CaseMesh API container image. Must be supplied explicitly by the deployment caller.')
+param containerImage string
 
 @description('Port exposed by the CaseMesh API container.')
 @minValue(1)
@@ -95,14 +95,12 @@ param mcpAuthTokenSecret string
 @description('Existing Microsoft provider authentication secret value.')
 param microsoftProviderAuthenticationSecret string
 
-
 var commonTags = {
   project: 'CaseMesh-AI'
   environment: 'dev'
   managedBy: 'Bicep'
   phase: '31'
 }
-
 
 module environment './modules/environment.bicep' = {
   name: 'casemesh-environment'
@@ -112,7 +110,6 @@ module environment './modules/environment.bicep' = {
     tags: commonTags
   }
 }
-
 
 module api './modules/container-app.bicep' = {
   name: 'casemesh-container-app'
@@ -157,7 +154,6 @@ module api './modules/container-app.bicep' = {
   }
 }
 
-
 module web './modules/static-web-app.bicep' = {
   name: 'casemesh-static-web-app'
   params: {
@@ -166,7 +162,6 @@ module web './modules/static-web-app.bicep' = {
     tags: commonTags
   }
 }
-
 
 output environmentName string = environment.outputs.environmentName
 

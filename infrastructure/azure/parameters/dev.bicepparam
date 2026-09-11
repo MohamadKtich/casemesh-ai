@@ -7,7 +7,7 @@ param environmentName = 'casemesh-env-dev'
 param containerAppName = 'casemesh-api-dev'
 param staticWebAppName = 'casemesh-web-dev'
 
-param containerImage = 'ghcr.io/mohamadktich/casemesh-api:phase31c1-cors'
+param containerImage = readEnvironmentVariable('CASEMESH_CONTAINER_IMAGE')
 param targetPort = 8000
 
 param minReplicas = 0
