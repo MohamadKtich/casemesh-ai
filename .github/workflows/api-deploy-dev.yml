@@ -2,11 +2,20 @@ name: CaseMesh API Deploy Dev
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type DEPLOY to confirm deployment to Azure dev'
+        required: true
+        type: string
 
 permissions:
   contents: read
   packages: write
   id-token: write
+
+concurrency:
+  group: casemesh-api-deploy-dev
+  cancel-in-progress: false
 
 env:
   REGISTRY: ghcr.io
@@ -21,9 +30,12 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - name: Require main branch
+      - name: Require main branch and confirmation
+        env:
+          DEPLOY_CONFIRMATION: ${{ inputs.confirm }}
         run: |
           test "${GITHUB_REF}" = "refs/heads/main"
+          test "${DEPLOY_CONFIRMATION}" = "DEPLOY"
 
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -79,7 +91,6 @@ jobs:
           echo "revision=${previous_revision}" >> "${GITHUB_OUTPUT}"
 
       - name: Deploy immutable image
-        id: deploy
         shell: bash
         run: |
           image="${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA}"
@@ -92,12 +103,21 @@ jobs:
             --image "${image}" \
             --output none
 
-      - name: Wait for ready revision
+      - name: Wait for exact new ready revision
         shell: bash
         run: |
           expected_image="${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA}"
+          previous_revision="${{ steps.previous.outputs.revision }}"
 
           for attempt in $(seq 1 30); do
+            latest_revision="$(
+              az containerapp show \
+                --name "${CONTAINER_APP}" \
+                --resource-group "${RESOURCE_GROUP}" \
+                --query "properties.latestRevisionName" \
+                --output tsv
+            )"
+
             ready_revision="$(
               az containerapp show \
                 --name "${CONTAINER_APP}" \
@@ -106,27 +126,39 @@ jobs:
                 --output tsv
             )"
 
-            live_image="$(
-              az containerapp show \
-                --name "${CONTAINER_APP}" \
-                --resource-group "${RESOURCE_GROUP}" \
-                --query "properties.template.containers[0].image" \
-                --output tsv
-            )"
+            ready_image=""
+
+            if [ -n "${ready_revision}" ]; then
+              ready_image="$(
+                az containerapp revision show \
+                  --name "${CONTAINER_APP}" \
+                  --resource-group "${RESOURCE_GROUP}" \
+                  --revision "${ready_revision}" \
+                  --query "properties.template.containers[0].image" \
+                  --output tsv 2>/dev/null || true
+              )"
+            fi
 
             echo "Attempt ${attempt}/30"
+            echo "Previous revision: ${previous_revision}"
+            echo "Latest revision: ${latest_revision}"
             echo "Ready revision: ${ready_revision}"
-            echo "Live image: ${live_image}"
+            echo "Ready image: ${ready_image}"
 
-            if [ -n "${ready_revision}" ] && [ "${live_image}" = "${expected_image}" ]; then
-              echo "Container App revision is ready."
+            if \
+              [ -n "${latest_revision}" ] && \
+              [ "${latest_revision}" != "${previous_revision}" ] && \
+              [ "${ready_revision}" = "${latest_revision}" ] && \
+              [ "${ready_image}" = "${expected_image}" ]; then
+
+              echo "Exact new Container App revision is ready."
               exit 0
             fi
 
             sleep 10
           done
 
-          echo "Timed out waiting for the new Container App revision."
+          echo "Timed out waiting for the exact new revision to become ready."
           exit 1
 
       - name: Resolve API hostname
@@ -140,6 +172,8 @@ jobs:
               --query "properties.configuration.ingress.fqdn" \
               --output tsv
           )"
+
+          test -n "${fqdn}"
 
           echo "fqdn=${fqdn}" >> "${GITHUB_OUTPUT}"
           echo "API hostname: ${fqdn}"
@@ -177,16 +211,25 @@ jobs:
           echo "API readiness check failed."
           exit 1
 
-      - name: Verify deployed image
+      - name: Verify exact deployed image and revision
         shell: bash
         run: |
           expected_image="${REGISTRY}/${IMAGE_NAME}:${GITHUB_SHA}"
+          previous_revision="${{ steps.previous.outputs.revision }}"
 
-          deployed_image="$(
+          configured_image="$(
             az containerapp show \
               --name "${CONTAINER_APP}" \
               --resource-group "${RESOURCE_GROUP}" \
               --query "properties.template.containers[0].image" \
+              --output tsv
+          )"
+
+          latest_revision="$(
+            az containerapp show \
+              --name "${CONTAINER_APP}" \
+              --resource-group "${RESOURCE_GROUP}" \
+              --query "properties.latestRevisionName" \
               --output tsv
           )"
 
@@ -198,11 +241,28 @@ jobs:
               --output tsv
           )"
 
-          echo "Expected image: ${expected_image}"
-          echo "Deployed image: ${deployed_image}"
-          echo "Ready revision: ${ready_revision}"
+          ready_image="$(
+            az containerapp revision show \
+              --name "${CONTAINER_APP}" \
+              --resource-group "${RESOURCE_GROUP}" \
+              --revision "${ready_revision}" \
+              --query "properties.template.containers[0].image" \
+              --output tsv
+          )"
 
-          test "${deployed_image}" = "${expected_image}"
+          echo "Expected image: ${expected_image}"
+          echo "Configured image: ${configured_image}"
+          echo "Previous revision: ${previous_revision}"
+          echo "Latest revision: ${latest_revision}"
+          echo "Ready revision: ${ready_revision}"
+          echo "Ready revision image: ${ready_image}"
+
+          test "${configured_image}" = "${expected_image}"
+          test "${latest_revision}" != "${previous_revision}"
+          test "${ready_revision}" = "${latest_revision}"
+          test "${ready_image}" = "${expected_image}"
+
+          echo "Exact deployed revision verification passed."
 
       - name: Roll back on deployment failure
         if: ${{ failure() && steps.previous.outputs.image != '' }}
@@ -210,7 +270,30 @@ jobs:
         run: |
           previous_image="${{ steps.previous.outputs.image }}"
 
+          current_image="$(
+            az containerapp show \
+              --name "${CONTAINER_APP}" \
+              --resource-group "${RESOURCE_GROUP}" \
+              --query "properties.template.containers[0].image" \
+              --output tsv
+          )"
+
+          if [ "${current_image}" = "${previous_image}" ]; then
+            echo "Container App is already configured with the previous image."
+            echo "No rollback update is required."
+            exit 0
+          fi
+
+          failed_revision="$(
+            az containerapp show \
+              --name "${CONTAINER_APP}" \
+              --resource-group "${RESOURCE_GROUP}" \
+              --query "properties.latestRevisionName" \
+              --output tsv
+          )"
+
           echo "Deployment failed."
+          echo "Failed/latest revision: ${failed_revision}"
           echo "Rolling back to: ${previous_image}"
 
           az containerapp update \
@@ -219,4 +302,53 @@ jobs:
             --image "${previous_image}" \
             --output none
 
-          echo "Rollback command completed."
+          for attempt in $(seq 1 30); do
+            latest_revision="$(
+              az containerapp show \
+                --name "${CONTAINER_APP}" \
+                --resource-group "${RESOURCE_GROUP}" \
+                --query "properties.latestRevisionName" \
+                --output tsv
+            )"
+
+            ready_revision="$(
+              az containerapp show \
+                --name "${CONTAINER_APP}" \
+                --resource-group "${RESOURCE_GROUP}" \
+                --query "properties.latestReadyRevisionName" \
+                --output tsv
+            )"
+
+            ready_image=""
+
+            if [ -n "${ready_revision}" ]; then
+              ready_image="$(
+                az containerapp revision show \
+                  --name "${CONTAINER_APP}" \
+                  --resource-group "${RESOURCE_GROUP}" \
+                  --revision "${ready_revision}" \
+                  --query "properties.template.containers[0].image" \
+                  --output tsv 2>/dev/null || true
+              )"
+            fi
+
+            echo "Rollback attempt ${attempt}/30"
+            echo "Latest revision: ${latest_revision}"
+            echo "Ready revision: ${ready_revision}"
+            echo "Ready image: ${ready_image}"
+
+            if \
+              [ -n "${latest_revision}" ] && \
+              [ "${latest_revision}" != "${failed_revision}" ] && \
+              [ "${ready_revision}" = "${latest_revision}" ] && \
+              [ "${ready_image}" = "${previous_image}" ]; then
+
+              echo "Rollback revision is ready."
+              exit 0
+            fi
+
+            sleep 10
+          done
+
+          echo "Rollback was requested but readiness verification timed out."
+          exit 1
