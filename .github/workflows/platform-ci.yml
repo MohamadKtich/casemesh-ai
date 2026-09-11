@@ -1,0 +1,60 @@
+name: CaseMesh Platform CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  platform-quality:
+    name: Platform Quality Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose
+        run: docker compose -f docker-compose.yml config --quiet
+
+      - name: Build API container
+        run: docker build -t casemesh-api:ci-check ./apps/api
+
+      - name: Verify API container runtime user
+        run: |
+          runtime_user="$(docker image inspect casemesh-api:ci-check --format '{{.Config.User}}')"
+          working_dir="$(docker image inspect casemesh-api:ci-check --format '{{.Config.WorkingDir}}')"
+
+          echo "Runtime user: $runtime_user"
+          echo "Working directory: $working_dir"
+
+          test "$runtime_user" = "casemesh"
+          test "$working_dir" = "/app"
+
+      - name: Show Azure CLI version
+        run: az --version
+
+      - name: Ensure Bicep CLI is available
+        run: az bicep install
+
+      - name: Show Bicep version
+        run: az bicep version
+
+      - name: Validate Azure Bicep
+        run: |
+          az bicep build \
+            --file infrastructure/azure/main.bicep \
+            --outfile "${RUNNER_TEMP}/casemesh-main-ci.json"
+
+          test -f "${RUNNER_TEMP}/casemesh-main-ci.json"
