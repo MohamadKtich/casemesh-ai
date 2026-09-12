@@ -15,6 +15,7 @@ import {
 import "./App.css"
 
 import ActionsWorkspace from "./components/ActionsWorkspace"
+import CaseMeshLogo from "./components/CaseMeshLogo"
 import ApprovalsWorkspace from "./components/ApprovalsWorkspace"
 import CasesWorkspace from "./components/CasesWorkspace"
 import EvidenceWorkspace from "./components/EvidenceWorkspace"
@@ -958,7 +959,7 @@ function App() {
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">
-            CM
+            <CaseMeshLogo />
           </div>
 
           <div>
