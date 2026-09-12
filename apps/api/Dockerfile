@@ -5,7 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     APP_HOST=0.0.0.0 \
-    APP_PORT=8000
+    APP_PORT=8000 \
+    EVALUATION_ARTIFACT_ROOT=/app/data/evaluation/baseline-sla-v1
 
 WORKDIR /app
 
@@ -13,9 +14,19 @@ WORKDIR /app
 RUN groupadd --system casemesh \
     && useradd --system --gid casemesh --create-home casemesh
 
-# Install the application separately so Docker can cache dependencies.
-COPY pyproject.toml ./
-COPY src ./src
+# Install the API from the repository-root Docker build context.
+COPY apps/api/pyproject.toml ./
+COPY apps/api/src ./src
+
+# Package the committed evaluation baseline as read-only runtime data.
+COPY data/evaluation/baseline-sla-v1 ./data/evaluation/baseline-sla-v1
+
+# Fail the image build if the expected evaluation evidence is incomplete.
+RUN test -f /app/data/evaluation/baseline-sla-v1/evaluation_results.json \
+    && test -f /app/data/evaluation/baseline-sla-v1/evaluation_summary.json \
+    && test -f /app/data/evaluation/baseline-sla-v1/evaluation_failures.json \
+    && test -f /app/data/evaluation/baseline-sla-v1/evaluation_runs.csv \
+    && test -f /app/data/evaluation/baseline-sla-v1/evaluation_stability.json
 
 RUN python -m pip install --upgrade pip \
     && python -m pip install .

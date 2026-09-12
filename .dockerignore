@@ -1,0 +1,15 @@
+# CaseMesh API build context allowlist.
+# Everything is excluded unless explicitly required below.
+**
+
+!apps/
+!apps/api/
+!apps/api/Dockerfile
+!apps/api/pyproject.toml
+!apps/api/src/
+!apps/api/src/**
+
+!data/
+!data/evaluation/
+!data/evaluation/baseline-sla-v1/
+!data/evaluation/baseline-sla-v1/**
