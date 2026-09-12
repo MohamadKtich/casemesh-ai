@@ -1,0 +1,129 @@
+{
+  "baseline_benchmark_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+  "baseline_run_id": "sla-deterministic-dataset-v1",
+  "baseline_source_git_sha": "59c6138dd89f965ddea47861d9af996866d38c65",
+  "created_at": "2026-09-12T04:39:12.506075Z",
+  "credit_stability": 1.0,
+  "dataset_fingerprint": "dcbcaedd494049115aba5308d7316e05a9b1611d20b64234d25ef9d13eb304ac",
+  "decision_stability": 1.0,
+  "human_review_stability": 1.0,
+  "latency_max_ms": 16.870299936272204,
+  "latency_mean_ms": 14.296624989947304,
+  "latency_min_ms": 13.620599987916648,
+  "latency_p95_ms": 14.974300051108003,
+  "repeated_result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+  "repeated_runs": 20,
+  "samples": [
+    {
+      "duration_ms": 16.870299936272204,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 1
+    },
+    {
+      "duration_ms": 13.942699995823205,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 2
+    },
+    {
+      "duration_ms": 14.401799999177456,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 3
+    },
+    {
+      "duration_ms": 14.211899950169027,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 4
+    },
+    {
+      "duration_ms": 14.974300051108003,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 5
+    },
+    {
+      "duration_ms": 13.939199969172478,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 6
+    },
+    {
+      "duration_ms": 14.652499929070473,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 7
+    },
+    {
+      "duration_ms": 14.540200005285442,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 8
+    },
+    {
+      "duration_ms": 14.247699989937246,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 9
+    },
+    {
+      "duration_ms": 14.017999987117946,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 10
+    },
+    {
+      "duration_ms": 14.90029995329678,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 11
+    },
+    {
+      "duration_ms": 13.724699965678155,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 12
+    },
+    {
+      "duration_ms": 13.653800007887185,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 13
+    },
+    {
+      "duration_ms": 14.118600054644048,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 14
+    },
+    {
+      "duration_ms": 13.620599987916648,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 15
+    },
+    {
+      "duration_ms": 14.0250000404194,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 16
+    },
+    {
+      "duration_ms": 13.815299957059324,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 17
+    },
+    {
+      "duration_ms": 14.326900010928512,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 18
+    },
+    {
+      "duration_ms": 13.840800034813583,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 19
+    },
+    {
+      "duration_ms": 14.10789997316897,
+      "result_hash": "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0",
+      "run_index": 20
+    }
+  ],
+  "schema_version": "1.0",
+  "source_tree_dirty": false,
+  "stability_evaluator_git_sha": "8ed3a04037980ed1354b7e46af547d19f08e76d7",
+  "stable": true,
+  "timing_scope": "local_diagnostic_only",
+  "total_case_executions": 200,
+  "unique_result_hash_values": [
+    "c2c036c8d4a0367b821eef01942f744b7c0acf46fddb7e9557631dd709c2acc0"
+  ],
+  "unique_result_hashes": 1,
+  "unique_scenarios_per_run": 10
+}
