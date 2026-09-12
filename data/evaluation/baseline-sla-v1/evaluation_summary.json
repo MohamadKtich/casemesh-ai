@@ -1,0 +1,31 @@
+{
+  "created_at": "2026-09-12T04:23:08.751953+00:00",
+  "dataset": {
+    "duplicate_groups": 10,
+    "duplicate_records": 90,
+    "total_records": 100,
+    "unique_records": 10
+  },
+  "evaluated_cases": 10,
+  "failed_cases": 0,
+  "metrics": {
+    "credit_accuracy": 1.0,
+    "decision_accuracy": 1.0,
+    "evaluated_cases": 10,
+    "human_review_accuracy": 1.0,
+    "resolved_credit_cases": 6
+  },
+  "provenance": {
+    "benchmark_profile": "sla-deterministic",
+    "dataset_fingerprint": "dcbcaedd494049115aba5308d7316e05a9b1611d20b64234d25ef9d13eb304ac",
+    "dataset_name": "casemesh-ai-dataset",
+    "dataset_version": "1.0",
+    "evaluator_version": "0.7.0",
+    "git_sha": "59c6138dd89f965ddea47861d9af996866d38c65",
+    "model": null,
+    "provider": "deterministic",
+    "resolution_engine": "casemesh.services.sla_resolution.resolve_sla_claim",
+    "source_tree_dirty": false
+  },
+  "run_id": "sla-deterministic-dataset-v1"
+}
