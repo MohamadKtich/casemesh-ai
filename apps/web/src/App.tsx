@@ -18,6 +18,7 @@ import ActionsWorkspace from "./components/ActionsWorkspace"
 import ApprovalsWorkspace from "./components/ApprovalsWorkspace"
 import CasesWorkspace from "./components/CasesWorkspace"
 import EvidenceWorkspace from "./components/EvidenceWorkspace"
+import EvaluationWorkspace from "./components/EvaluationWorkspace"
 import InvestigationsWorkspace from "./components/InvestigationsWorkspace"
 
 import {
@@ -45,6 +46,7 @@ type ActiveView =
   | "investigations"
   | "approvals"
   | "actions"
+  | "evaluation"
 
 
 function App() {
@@ -409,6 +411,20 @@ function App() {
     )
   }
 
+
+  function openEvaluation() {
+    if (!isAuthenticated) {
+      return
+    }
+
+    setActiveView(
+      "evaluation",
+    )
+
+    setSelectedCase(
+      null,
+    )
+  }
 
   function backToSelectedCase() {
     if (!isAuthenticated) {
@@ -920,6 +936,9 @@ function App() {
         : "Approvals"
     }
 
+    if (visibleActiveView === "evaluation") {
+      return "Evaluation"
+    }
     if (visibleActiveView === "actions") {
       return visibleSelectedCase
         ? `${visibleSelectedCase.case_number} Actions`
@@ -1066,6 +1085,25 @@ function App() {
             <span>06</span>
             Actions
           </button>
+
+          <button
+            className={
+              visibleActiveView === "evaluation"
+                ? "nav-item active"
+                : "nav-item"
+            }
+            type="button"
+            onClick={openEvaluation}
+            disabled={!isAuthenticated}
+            aria-disabled={!isAuthenticated}
+            title={
+              isAuthenticated
+                ? "Evaluation"
+                : "Sign in with Microsoft to access Evaluation."
+            }
+          >
+            <span>07</span>
+            Evaluation          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -1222,6 +1260,10 @@ function App() {
             />
           )}
 
+        {isAuthenticated &&
+          visibleActiveView === "evaluation" && (
+            <EvaluationWorkspace />
+          )}
         {isAuthenticated &&
           visibleActiveView === "actions" &&
           visibleSelectedCase && (

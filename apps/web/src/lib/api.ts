@@ -733,3 +733,128 @@ export function getActionAuditEvents(
     },
   )
 }
+
+
+export interface EvaluationMetricSummary {
+  evaluated_cases: number
+  resolved_credit_cases: number
+  decision_accuracy: number
+  credit_accuracy: number
+  human_review_accuracy: number
+}
+
+
+export interface EvaluationDatasetSummary {
+  total_records: number
+  unique_records: number
+  duplicate_records: number
+  duplicate_groups: number
+}
+
+
+export interface EvaluationProvenance {
+  dataset_name: string
+  dataset_version: string
+  dataset_fingerprint: string
+  benchmark_profile: string
+  resolution_engine: string
+  provider: string
+  model: string | null
+  evaluator_version: string
+  git_sha: string
+  source_tree_dirty: boolean
+}
+
+
+export interface EvaluationSummaryResponse {
+  run_id: string
+  created_at: string
+  provenance: EvaluationProvenance
+  dataset: EvaluationDatasetSummary
+  evaluated_cases: number
+  failed_cases: number
+  metrics: EvaluationMetricSummary
+}
+
+
+export interface EvaluationCaseScore {
+  decision_correct: boolean
+  credit_correct: boolean | null
+  human_review_correct: boolean
+}
+
+
+export interface EvaluationCaseResult {
+  evaluation_id: string
+  scenario_type: string
+  fingerprint: string
+  expected_decision: string
+  actual_decision: string
+  expected_credit_pct: number | null
+  actual_credit_pct: number | null
+  expected_human_review: boolean
+  actual_human_review: boolean
+  score: EvaluationCaseScore
+}
+
+
+export interface EvaluationFailuresResponse {
+  run_id: string
+  created_at: string
+  provenance: EvaluationProvenance
+  failed_cases: number
+  cases: EvaluationCaseResult[]
+}
+
+
+export interface EvaluationStabilityResponse {
+  repeated_runs: number
+  unique_scenarios_per_run: number
+  total_case_executions: number
+  unique_result_hashes: number
+  decision_stability: number
+  credit_stability: number
+  human_review_stability: number
+  stable: boolean
+  timing_scope: string
+}
+
+
+export function getEvaluationSummary(
+  signal?: AbortSignal,
+): Promise<EvaluationSummaryResponse> {
+  return request<EvaluationSummaryResponse>(
+    "/evaluation/summary",
+    { signal },
+  )
+}
+
+
+export function getEvaluationStability(
+  signal?: AbortSignal,
+): Promise<EvaluationStabilityResponse> {
+  return request<EvaluationStabilityResponse>(
+    "/evaluation/stability",
+    { signal },
+  )
+}
+
+
+export function getEvaluationCases(
+  signal?: AbortSignal,
+): Promise<EvaluationCaseResult[]> {
+  return request<EvaluationCaseResult[]>(
+    "/evaluation/cases",
+    { signal },
+  )
+}
+
+
+export function getEvaluationFailures(
+  signal?: AbortSignal,
+): Promise<EvaluationFailuresResponse> {
+  return request<EvaluationFailuresResponse>(
+    "/evaluation/failures",
+    { signal },
+  )
+}
