@@ -4,6 +4,7 @@ from casemesh.api.routes.actions import router as actions_router
 from casemesh.api.routes.answers import router as answers_router
 from casemesh.api.routes.cases import router as cases_router
 from casemesh.api.routes.documents import router as documents_router
+from casemesh.api.routes.evaluation import router as evaluation_router
 from casemesh.api.routes.health import router as health_router
 from casemesh.api.routes.investigations import router as investigations_router
 from casemesh.api.routes.readiness import router as readiness_router
@@ -19,3 +20,4 @@ api_router.include_router(retrieval_router)
 api_router.include_router(answers_router)
 api_router.include_router(investigations_router)
 api_router.include_router(actions_router)
+api_router.include_router(evaluation_router)
