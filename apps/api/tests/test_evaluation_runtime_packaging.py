@@ -77,3 +77,22 @@ def test_root_dockerignore_allows_only_required_api_inputs() -> None:
         "!data/evaluation/baseline-sla-v1/**"
         in dockerignore
     )
+
+
+def test_platform_ci_uses_repository_root_context() -> None:
+    workflow = (
+        _repo_root()
+        / ".github"
+        / "workflows"
+        / "platform-ci.yml"
+    ).read_text(encoding="utf-8")
+
+    assert (
+        "docker build --file apps/api/Dockerfile "
+        "-t casemesh-api:ci-check ."
+        in workflow
+    )
+    assert (
+        "docker build -t casemesh-api:ci-check ./apps/api"
+        not in workflow
+    )

@@ -31,7 +31,7 @@ jobs:
         run: docker compose -f docker-compose.yml config --quiet
 
       - name: Build API container
-        run: docker build -t casemesh-api:ci-check ./apps/api
+        run: docker build --file apps/api/Dockerfile -t casemesh-api:ci-check .
 
       - name: Verify API container runtime user
         run: |
