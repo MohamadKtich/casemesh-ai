@@ -79,3 +79,9 @@ azure-evidence-test.txt
 frontend-evidence-test.txt
 # Generated Bicep ARM template
 infrastructure/azure/main.json
+
+# Keep generated synthetic data local but track reproducibility scripts.
+!data/synthetic/casemesh-ai-dataset-v1.0/scripts/
+!data/synthetic/casemesh-ai-dataset-v1.0/scripts/*.py
+data/synthetic/*.zip
+data/synthetic/casemesh-ai-dataset-v1.0-generated/
