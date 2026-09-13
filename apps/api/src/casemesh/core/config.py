@@ -99,6 +99,10 @@ class Settings(BaseSettings):
     # must also be explicitly enabled before any AWS integration can run.
     aws_intelligence_enabled: bool = False
 
+    # Mock mode is deterministic, offline, and cost-free.
+    # SDK mode permits real boto3 clients when a capability is enabled.
+    aws_client_mode: Literal["mock", "sdk"] = "mock"
+
     # Bedrock, Guardrails, and human-escalation services.
     aws_ai_region: str = "me-central-1"
 
