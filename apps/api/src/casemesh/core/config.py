@@ -124,6 +124,7 @@ class Settings(BaseSettings):
 
     aws_textract_bucket: str = ""
     aws_textract_completion_topic_arn: str = ""
+    aws_textract_notification_role_arn: str = ""
     aws_textract_queue_url: str = ""
     aws_human_alert_topic_arn: str = ""
 

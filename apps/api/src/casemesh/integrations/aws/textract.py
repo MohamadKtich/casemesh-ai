@@ -289,6 +289,8 @@ class TextractDocumentIntelligence:
         max_pages: int = 20,
         expected_bucket: str | None = None,
         managed_prefix: str = "casemesh-temp/",
+        notification_topic_arn: str | None = None,
+        notification_role_arn: str | None = None,
     ) -> None:
         if max_pages <= 0:
             raise ValueError("Textract max_pages must be greater than zero.")
@@ -314,11 +316,32 @@ class TextractDocumentIntelligence:
         if not prefix_body or any(part in {"", ".", ".."} for part in prefix_body.split("/")):
             raise ValueError("Textract managed_prefix contains an unsafe segment.")
 
+        normalized_notification_topic_arn = (
+            notification_topic_arn.strip() if notification_topic_arn is not None else None
+        )
+
+        normalized_notification_role_arn = (
+            notification_role_arn.strip() if notification_role_arn is not None else None
+        )
+
+        if normalized_notification_topic_arn == "":
+            raise ValueError("Textract notification_topic_arn must not be blank.")
+
+        if normalized_notification_role_arn == "":
+            raise ValueError("Textract notification_role_arn must not be blank.")
+
+        if (normalized_notification_topic_arn is None) != (
+            normalized_notification_role_arn is None
+        ):
+            raise ValueError("Textract notification topic and role must be configured together.")
+
         self._client = client
         self._parser = TextractResponseParser()
         self._max_pages = max_pages
         self._expected_bucket = normalized_expected_bucket
         self._managed_prefix = normalized_prefix
+        self._notification_topic_arn = normalized_notification_topic_arn
+        self._notification_role_arn = normalized_notification_role_arn
 
     async def start(
         self,
@@ -328,15 +351,25 @@ class TextractDocumentIntelligence:
 
         client_request_token = self._client_request_token(request)
 
-        raw_response = await asyncio.to_thread(
-            self._client.start_document_text_detection,
-            DocumentLocation={
+        start_kwargs: dict[str, object] = {
+            "DocumentLocation": {
                 "S3Object": {
                     "Bucket": request.staged.bucket,
                     "Name": request.staged.object_key,
                 }
             },
-            ClientRequestToken=client_request_token,
+            "ClientRequestToken": client_request_token,
+        }
+
+        if self._notification_topic_arn is not None and self._notification_role_arn is not None:
+            start_kwargs["NotificationChannel"] = {
+                "SNSTopicArn": self._notification_topic_arn,
+                "RoleArn": self._notification_role_arn,
+            }
+
+        raw_response = await asyncio.to_thread(
+            self._client.start_document_text_detection,
+            **start_kwargs,
         )
 
         response = self._require_mapping(
@@ -665,6 +698,11 @@ def build_aws_document_intelligence_provider(
     if settings.aws_client_mode == "mock":
         return MockTextractDocumentIntelligence()
 
+    notification_role_arn = settings.aws_textract_notification_role_arn.strip()
+
+    if not notification_role_arn:
+        raise ValueError("AWS SDK Textract requires aws_textract_notification_role_arn.")
+
     client = cast(
         TextractClientProtocol,
         gateway.textract_client(),
@@ -674,6 +712,8 @@ def build_aws_document_intelligence_provider(
         client=client,
         max_pages=settings.aws_max_textract_pages,
         expected_bucket=settings.aws_textract_bucket,
+        notification_topic_arn=(settings.aws_textract_completion_topic_arn),
+        notification_role_arn=notification_role_arn,
     )
 
 

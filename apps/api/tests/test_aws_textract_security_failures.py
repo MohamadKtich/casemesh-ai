@@ -124,6 +124,7 @@ def _sdk_settings() -> Settings:
         aws_textract_enabled=True,
         aws_textract_bucket="synthetic-textract-bucket",
         aws_textract_completion_topic_arn="synthetic-topic",
+        aws_textract_notification_role_arn="arn:aws:iam::123456789012:role/CaseMeshTextractNotificationRole",
         aws_textract_queue_url="synthetic-queue",
         aws_max_textract_pages=20,
     )
