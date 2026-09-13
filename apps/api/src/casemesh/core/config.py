@@ -1,6 +1,7 @@
-﻿from functools import lru_cache
+from functools import lru_cache
 from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,9 +15,7 @@ class Settings(BaseSettings):
     # Keep this explicit. Do not use "*" with authenticated browser APIs.
     cors_allowed_origins: str = "http://localhost:3000"
 
-    database_url: str = (
-        "postgresql+asyncpg://casemesh:casemesh_local@localhost:5432/casemesh"
-    )
+    database_url: str = "postgresql+asyncpg://casemesh:casemesh_local@localhost:5432/casemesh"
 
     document_storage_root: str = "data/raw"
     max_upload_bytes: int = 10 * 1024 * 1024
@@ -36,9 +35,7 @@ class Settings(BaseSettings):
     ollama_base_url: str = "http://127.0.0.1:11434"
 
     hf_token: str = ""
-    hf_inference_base_url: str = (
-        "https://router.huggingface.co/hf-inference"
-    )
+    hf_inference_base_url: str = "https://router.huggingface.co/hf-inference"
 
     retrieval_candidate_limit: int = 20
     retrieval_rrf_k: int = 60
@@ -96,6 +93,112 @@ class Settings(BaseSettings):
     mcp_client_url: str = "http://127.0.0.1:8000/mcp/"
 
     mcp_client_timeout_seconds: float = 120.0
+    # Phase 37: AWS specialized intelligence extension.
+    #
+    # Master switch remains disabled by default. Individual capabilities
+    # must also be explicitly enabled before any AWS integration can run.
+    aws_intelligence_enabled: bool = False
+
+    # Bedrock, Guardrails, and human-escalation services.
+    aws_ai_region: str = "me-central-1"
+
+    # Textract is not currently available in me-central-1.
+    # S3 staging, Textract, completion SNS, and processing SQS must use
+    # the same supported document-processing region.
+    aws_document_region: str = "eu-west-1"
+
+    aws_textract_enabled: bool = False
+    aws_async_processing_enabled: bool = False
+    aws_bedrock_review_enabled: bool = False
+    aws_bedrock_guardrails_enabled: bool = False
+    aws_sns_alerts_enabled: bool = False
+
+    # Resource identifiers remain empty until real AWS validation.
+    aws_bedrock_model_id: str = ""
+    aws_bedrock_guardrail_id: str = ""
+    aws_bedrock_guardrail_version: str = ""
+
+    aws_textract_bucket: str = ""
+    aws_textract_completion_topic_arn: str = ""
+    aws_textract_queue_url: str = ""
+    aws_human_alert_topic_arn: str = ""
+
+    # Defensive operational limits.
+    aws_request_timeout_seconds: float = 30.0
+    aws_max_reviews_per_investigation: int = 1
+    aws_max_textract_pages: int = 20
+
+    @model_validator(mode="after")
+    def validate_aws_configuration(self) -> "Settings":
+        aws_capabilities_enabled = any(
+            (
+                self.aws_textract_enabled,
+                self.aws_async_processing_enabled,
+                self.aws_bedrock_review_enabled,
+                self.aws_bedrock_guardrails_enabled,
+                self.aws_sns_alerts_enabled,
+            )
+        )
+
+        if aws_capabilities_enabled and not self.aws_intelligence_enabled:
+            raise ValueError(
+                "AWS capabilities cannot be enabled while aws_intelligence_enabled is false."
+            )
+
+        if self.aws_request_timeout_seconds <= 0:
+            raise ValueError("aws_request_timeout_seconds must be greater than 0.")
+
+        if self.aws_max_reviews_per_investigation <= 0:
+            raise ValueError("aws_max_reviews_per_investigation must be greater than 0.")
+
+        if self.aws_max_textract_pages <= 0:
+            raise ValueError("aws_max_textract_pages must be greater than 0.")
+
+        if self.aws_bedrock_review_enabled and not self.aws_bedrock_model_id.strip():
+            raise ValueError("aws_bedrock_model_id is required when AWS Bedrock review is enabled.")
+
+        if self.aws_bedrock_guardrails_enabled:
+            if not self.aws_bedrock_review_enabled:
+                raise ValueError("AWS Bedrock Guardrails require aws_bedrock_review_enabled=true.")
+
+            if not self.aws_bedrock_guardrail_id.strip():
+                raise ValueError(
+                    "aws_bedrock_guardrail_id is required when AWS Bedrock Guardrails are enabled."
+                )
+
+            if not self.aws_bedrock_guardrail_version.strip():
+                raise ValueError(
+                    "aws_bedrock_guardrail_version is required when "
+                    "AWS Bedrock Guardrails are enabled."
+                )
+
+        if self.aws_textract_enabled:
+            if not self.aws_async_processing_enabled:
+                raise ValueError("AWS Textract requires aws_async_processing_enabled=true.")
+
+            missing_textract_settings = [
+                name
+                for name, value in (
+                    ("aws_textract_bucket", self.aws_textract_bucket),
+                    (
+                        "aws_textract_completion_topic_arn",
+                        self.aws_textract_completion_topic_arn,
+                    ),
+                    ("aws_textract_queue_url", self.aws_textract_queue_url),
+                )
+                if not value.strip()
+            ]
+
+            if missing_textract_settings:
+                missing = ", ".join(missing_textract_settings)
+                raise ValueError(f"Missing required AWS Textract settings: {missing}")
+
+        if self.aws_sns_alerts_enabled and not self.aws_human_alert_topic_arn.strip():
+            raise ValueError(
+                "aws_human_alert_topic_arn is required when AWS SNS alerts are enabled."
+            )
+
+        return self
 
     model_config = SettingsConfigDict(
         env_file=".env",
