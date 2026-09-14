@@ -1,4 +1,5 @@
 import builtins
+from collections.abc import Mapping
 from typing import Literal, cast
 from uuid import UUID
 
@@ -70,12 +71,17 @@ class ActionService:
                 detail=("Only completed investigations can propose governed actions."),
             )
 
+        second_review_requires_human = self._second_review_requires_human_review(
+            investigation.metadata_json
+        )
+
         evaluation = self._policy.evaluate(
             action_type=action_type,
             payload=payload,
             investigation_confidence=investigation.confidence,
             investigation_abstained=investigation.abstained,
             citation_count=len(investigation.citations_json),
+            second_review_requires_human=(second_review_requires_human),
         )
 
         action, approval = await self._actions.create(
@@ -377,6 +383,39 @@ class ActionService:
             action_request_id=action_request_id,
         )
         return [self._audit_response(event) for event in events]
+
+    @staticmethod
+    def _second_review_requires_human_review(
+        metadata: Mapping[str, object] | None,
+    ) -> bool:
+        """Interpret persisted second-review state conservatively.
+
+        Absence means the legacy investigation path was used.
+        Once a second-review record exists, only a completed
+        review with an effective continue route may preserve
+        normal policy behavior. Malformed or incomplete state
+        fails closed to human approval.
+        """
+
+        if not metadata:
+            return False
+
+        if "second_review" not in metadata:
+            return False
+
+        raw_review = metadata.get("second_review")
+
+        if not isinstance(
+            raw_review,
+            Mapping,
+        ):
+            return True
+
+        status = raw_review.get("status")
+
+        effective_route = raw_review.get("effective_route")
+
+        return not (status == "completed" and effective_route == "continue")
 
     def _initial_state(
         self,

@@ -1,9 +1,19 @@
+from collections.abc import Mapping
 from typing import Any, Literal, cast
+from uuid import UUID
 
 from langgraph.graph import END, START, StateGraph
 
 from casemesh.core.config import Settings
 from casemesh.db.models import InvestigationRun
+from casemesh.intelligence.contracts import (
+    ReviewEvidence,
+    SecondReviewProvider,
+    SecondReviewRequest,
+)
+from casemesh.intelligence.second_review_gate import (
+    evaluate_second_review,
+)
 from casemesh.repositories.investigations import InvestigationRepository
 from casemesh.schemas.answers import EvidenceCitation
 from casemesh.schemas.retrieval import RetrievalResult
@@ -36,6 +46,26 @@ def choose_next_step(state: InvestigationState) -> RouteDecision:
     return "produce_findings"
 
 
+PostFindingsRoute = Literal[
+    "second_review",
+    "finalize",
+]
+
+
+def choose_post_findings_step(
+    state: InvestigationState,
+) -> PostFindingsRoute:
+    """Route to optional second review without deciding why it was requested."""
+
+    if state.get(
+        "second_review_requested",
+        False,
+    ):
+        return "second_review"
+
+    return "finalize"
+
+
 class InvestigationWorkflow:
     def __init__(
         self,
@@ -46,6 +76,7 @@ class InvestigationWorkflow:
         investigation_repository: InvestigationRepository,
         retrieval_service: RetrievalSearcher,
         answer_service: AnswerService,
+        second_review_provider: SecondReviewProvider | None = None,
     ) -> None:
         self._run = run
         self._settings = settings
@@ -53,6 +84,7 @@ class InvestigationWorkflow:
         self._investigations = investigation_repository
         self._retrieval = retrieval_service
         self._answers = answer_service
+        self._second_review_provider = second_review_provider
         self._graph: Any = self._build_graph()
 
     def _build_graph(self) -> Any:
@@ -66,6 +98,7 @@ class InvestigationWorkflow:
         graph.add_node("retry_retrieval", self._retry_retrieval)
         graph.add_node("identify_gaps", self._identify_gaps)
         graph.add_node("produce_findings", self._produce_findings)
+        graph.add_node("second_review", self._second_review)
         graph.add_node("finalize", self._finalize)
 
         graph.add_edge(START, "initialize")
@@ -86,7 +119,17 @@ class InvestigationWorkflow:
 
         graph.add_edge("retry_retrieval", "retrieve_evidence")
         graph.add_edge("identify_gaps", "produce_findings")
-        graph.add_edge("produce_findings", "finalize")
+
+        graph.add_conditional_edges(
+            "produce_findings",
+            choose_post_findings_step,
+            {
+                "second_review": "second_review",
+                "finalize": "finalize",
+            },
+        )
+
+        graph.add_edge("second_review", "finalize")
         graph.add_edge("finalize", END)
 
         return graph.compile()
@@ -340,6 +383,203 @@ class InvestigationWorkflow:
             "findings_abstained": answer.abstained,
             "citations": citations,
         }
+
+    async def _second_review(
+        self,
+        state: InvestigationState,
+    ) -> InvestigationState:
+        """Run an explicitly requested advisory second review.
+
+        The trigger decision is intentionally outside this node. Phase 37I
+        will decide when second review is required. Provider/configuration
+        failures fail closed to human review without failing the primary
+        CaseMesh investigation.
+        """
+
+        provider = self._second_review_provider
+
+        if provider is None:
+            outcome: dict[str, object] = {
+                "status": "unavailable",
+                "effective_route": "human_review",
+                "forced_human_review": True,
+                "reason_codes": [
+                    "provider_unavailable",
+                ],
+            }
+
+        else:
+            try:
+                request = self._build_second_review_request(state)
+
+                result = await provider.review(request)
+
+                decision = evaluate_second_review(result)
+
+                outcome = {
+                    "status": "completed",
+                    "provider": result.provider,
+                    "model": result.model,
+                    "agreement": result.agreement,
+                    "risk_level": result.risk_level,
+                    "concerns": list(result.concerns),
+                    "provider_route": (result.recommended_route),
+                    "effective_route": (decision.effective_route),
+                    "forced_human_review": (decision.forced_human_review),
+                    "reason_codes": list(decision.reason_codes),
+                    "rationale": result.rationale,
+                }
+
+            except Exception as exc:
+                outcome = {
+                    "status": "failed",
+                    "provider": provider.provider_name,
+                    "model": provider.model_name,
+                    "effective_route": "human_review",
+                    "forced_human_review": True,
+                    "reason_codes": [
+                        "provider_failure",
+                    ],
+                    "error_type": type(exc).__name__,
+                }
+
+        self._run.current_step = "second_review"
+
+        metadata = dict(self._run.metadata_json or {})
+
+        metadata["second_review"] = outcome
+
+        self._run.metadata_json = metadata
+
+        await self._investigations.save(self._run)
+
+        return {
+            "current_step": "second_review",
+            "second_review": outcome,
+        }
+
+    def _build_second_review_request(
+        self,
+        state: InvestigationState,
+    ) -> SecondReviewRequest:
+        finding = state.get("findings")
+
+        if (
+            not isinstance(
+                finding,
+                str,
+            )
+            or not finding.strip()
+        ):
+            raise ValueError("Second review requires a non-blank primary finding.")
+
+        return SecondReviewRequest(
+            case_id=state["case_id"],
+            investigation_run_id=self._run.id,
+            objective=state["objective"],
+            primary_finding=finding,
+            primary_confidence=state.get("findings_confidence"),
+            primary_abstained=state.get(
+                "findings_abstained",
+                False,
+            ),
+            evidence=self._review_evidence(
+                state.get(
+                    "citations",
+                    [],
+                )
+            ),
+            gap_codes=self._gap_codes(
+                state.get(
+                    "gaps",
+                    [],
+                )
+            ),
+        )
+
+    @staticmethod
+    def _review_evidence(
+        citations: list[dict[str, object]],
+    ) -> tuple[ReviewEvidence, ...]:
+        evidence: list[ReviewEvidence] = []
+
+        for raw_citation in citations:
+            if not isinstance(
+                raw_citation,
+                Mapping,
+            ):
+                raise ValueError("Second-review citation must be a mapping.")
+
+            raw_chunk_id = raw_citation.get("chunk_id")
+            raw_document_id = raw_citation.get("document_id")
+            raw_chunk_index = raw_citation.get("chunk_index")
+            raw_excerpt = raw_citation.get("excerpt")
+            raw_label = raw_citation.get("label")
+
+            if not isinstance(
+                raw_chunk_index,
+                int,
+            ) or isinstance(
+                raw_chunk_index,
+                bool,
+            ):
+                raise ValueError("Second-review citation chunk_index must be an integer.")
+
+            if not isinstance(
+                raw_excerpt,
+                str,
+            ):
+                raise ValueError("Second-review citation excerpt must be a string.")
+
+            citation_label = (
+                raw_label.strip()
+                if isinstance(
+                    raw_label,
+                    str,
+                )
+                and raw_label.strip()
+                else None
+            )
+
+            evidence.append(
+                ReviewEvidence(
+                    chunk_id=UUID(str(raw_chunk_id)),
+                    document_id=UUID(str(raw_document_id)),
+                    chunk_index=raw_chunk_index,
+                    excerpt=raw_excerpt,
+                    citation_label=citation_label,
+                )
+            )
+
+        return tuple(evidence)
+
+    @staticmethod
+    def _gap_codes(
+        gaps: list[dict[str, object]],
+    ) -> tuple[str, ...]:
+        codes: list[str] = []
+
+        for raw_gap in gaps:
+            if not isinstance(
+                raw_gap,
+                Mapping,
+            ):
+                continue
+
+            raw_code = raw_gap.get("code")
+
+            if not isinstance(
+                raw_code,
+                str,
+            ):
+                continue
+
+            code = raw_code.strip()
+
+            if code and code not in codes:
+                codes.append(code)
+
+        return tuple(codes)
 
     async def _finalize(
         self,

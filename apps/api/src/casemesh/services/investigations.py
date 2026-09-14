@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 
 from casemesh.core.config import Settings
 from casemesh.db.models import InvestigationRun
+from casemesh.intelligence.contracts import SecondReviewProvider
 from casemesh.repositories.investigations import InvestigationRepository
 from casemesh.schemas.investigations import (
     InvestigationCitation,
@@ -29,12 +30,14 @@ class InvestigationService:
         investigation_repository: InvestigationRepository,
         retrieval_service: RetrievalSearcher,
         answer_service: AnswerService,
+        second_review_provider: SecondReviewProvider | None = None,
     ) -> None:
         self._settings = settings
         self._cases = case_reader
         self._investigations = investigation_repository
         self._retrieval = retrieval_service
         self._answers = answer_service
+        self._second_review_provider = second_review_provider
 
     async def start(
         self,
@@ -63,6 +66,7 @@ class InvestigationService:
             investigation_repository=self._investigations,
             retrieval_service=self._retrieval,
             answer_service=self._answers,
+            second_review_provider=(self._second_review_provider),
         )
 
         initial_state: InvestigationState = {
@@ -74,6 +78,7 @@ class InvestigationService:
             "attempt": 0,
             "max_retries": self._settings.workflow_max_retries,
             "search_query": objective,
+            "second_review_requested": False,
         }
 
         try:

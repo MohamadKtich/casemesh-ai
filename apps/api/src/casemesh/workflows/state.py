@@ -22,3 +22,5 @@ class InvestigationState(TypedDict, total=False):
     findings_confidence: str
     findings_abstained: bool
     citations: list[dict[str, object]]
+    second_review_requested: bool
+    second_review: dict[str, object]
