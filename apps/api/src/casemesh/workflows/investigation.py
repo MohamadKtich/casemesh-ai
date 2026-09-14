@@ -15,6 +15,10 @@ from casemesh.intelligence.guarded_review import (
     SecondReviewGuardrailBlockedError,
     SecondReviewGuardrailFailureError,
 )
+from casemesh.intelligence.risk_triggers import (
+    RiskTriggerContext,
+    RiskTriggerEngine,
+)
 from casemesh.intelligence.second_review_gate import (
     evaluate_second_review,
 )
@@ -89,6 +93,7 @@ class InvestigationWorkflow:
         self._retrieval = retrieval_service
         self._answers = answer_service
         self._second_review_provider = second_review_provider
+        self._risk_trigger_engine = RiskTriggerEngine()
         self._graph: Any = self._build_graph()
 
     def _build_graph(self) -> Any:
@@ -102,6 +107,10 @@ class InvestigationWorkflow:
         graph.add_node("retry_retrieval", self._retry_retrieval)
         graph.add_node("identify_gaps", self._identify_gaps)
         graph.add_node("produce_findings", self._produce_findings)
+        graph.add_node(
+            "evaluate_risk_triggers",
+            self._evaluate_risk_triggers,
+        )
         graph.add_node("second_review", self._second_review)
         graph.add_node("finalize", self._finalize)
 
@@ -124,8 +133,13 @@ class InvestigationWorkflow:
         graph.add_edge("retry_retrieval", "retrieve_evidence")
         graph.add_edge("identify_gaps", "produce_findings")
 
-        graph.add_conditional_edges(
+        graph.add_edge(
             "produce_findings",
+            "evaluate_risk_triggers",
+        )
+
+        graph.add_conditional_edges(
+            "evaluate_risk_triggers",
             choose_post_findings_step,
             {
                 "second_review": "second_review",
@@ -386,6 +400,80 @@ class InvestigationWorkflow:
             "findings_confidence": answer.confidence,
             "findings_abstained": answer.abstained,
             "citations": citations,
+        }
+
+    async def _evaluate_risk_triggers(
+        self,
+        state: InvestigationState,
+    ) -> InvestigationState:
+        """Evaluate deterministic signals before optional second review."""
+
+        gap_codes = self._gap_codes(
+            state.get(
+                "gaps",
+                [],
+            )
+        )
+
+        decision = self._risk_trigger_engine.evaluate(
+            RiskTriggerContext(
+                findings_confidence=state.get("findings_confidence"),
+                findings_abstained=state.get(
+                    "findings_abstained",
+                    False,
+                ),
+                gap_codes=gap_codes,
+                security_flags=tuple(
+                    state.get(
+                        "security_flags",
+                        [],
+                    )
+                ),
+                evidence_conflict=state.get(
+                    "evidence_conflict",
+                    False,
+                ),
+                prompt_injection_signal=state.get(
+                    "prompt_injection_signal",
+                    False,
+                ),
+                manual_second_review_requested=state.get(
+                    "manual_second_review_requested",
+                    False,
+                ),
+            )
+        )
+
+        trigger_codes = [str(code) for code in decision.reason_codes]
+
+        trigger_metadata: dict[str, object] = {
+            "request_second_review": (decision.request_second_review),
+            "reason_codes": trigger_codes,
+            "triggers": [
+                {
+                    "code": trigger.code,
+                    "source": trigger.source,
+                    "rationale": trigger.rationale,
+                }
+                for trigger in decision.triggers
+            ],
+        }
+
+        self._run.current_step = "evaluate_risk_triggers"
+
+        metadata = dict(self._run.metadata_json or {})
+
+        metadata["risk_triggers"] = trigger_metadata
+
+        self._run.metadata_json = metadata
+
+        await self._investigations.save(self._run)
+
+        return {
+            "current_step": "evaluate_risk_triggers",
+            "risk_trigger_codes": trigger_codes,
+            "risk_triggers": trigger_metadata,
+            "second_review_requested": (decision.request_second_review),
         }
 
     async def _second_review(

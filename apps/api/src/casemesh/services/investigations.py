@@ -44,6 +44,7 @@ class InvestigationService:
         *,
         case_id: UUID,
         objective: str,
+        manual_second_review_requested: bool = False,
     ) -> InvestigationRunResponse:
         case = await self._cases.get(case_id)
 
@@ -78,6 +79,12 @@ class InvestigationService:
             "attempt": 0,
             "max_retries": self._settings.workflow_max_retries,
             "search_query": objective,
+            "manual_second_review_requested": manual_second_review_requested,
+            "evidence_conflict": False,
+            "prompt_injection_signal": False,
+            "security_flags": [],
+            "risk_trigger_codes": [],
+            "risk_triggers": {},
             "second_review_requested": False,
         }
 

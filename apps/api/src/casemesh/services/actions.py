@@ -7,6 +7,11 @@ from fastapi import HTTPException, status
 
 from casemesh.core.config import Settings
 from casemesh.db.models import ActionRequest, Approval, AuditEvent
+from casemesh.intelligence.risk_triggers import (
+    RiskTriggerContext,
+    RiskTriggerDecision,
+    RiskTriggerEngine,
+)
 from casemesh.policy.guardrails import PolicyEvaluation, PolicyGuard
 from casemesh.repositories.actions import ActionRepository
 from casemesh.repositories.cases import CaseRepository
@@ -39,6 +44,7 @@ class ActionService:
         self._investigations = investigation_repository
         self._actions = action_repository
         self._policy = policy_guard
+        self._risk_trigger_engine = RiskTriggerEngine()
 
     async def propose(
         self,
@@ -84,6 +90,26 @@ class ActionService:
             second_review_requires_human=(second_review_requires_human),
         )
 
+        action_trigger_decision = self._risk_trigger_engine.evaluate(
+            RiskTriggerContext(
+                action_type=action_type,
+                action_risk_level=(evaluation.risk_level),
+            )
+        )
+
+        risk_trigger_requires_human = bool(action_trigger_decision.triggers)
+
+        if risk_trigger_requires_human:
+            evaluation = self._policy.evaluate(
+                action_type=action_type,
+                payload=payload,
+                investigation_confidence=(investigation.confidence),
+                investigation_abstained=(investigation.abstained),
+                citation_count=len(investigation.citations_json),
+                second_review_requires_human=(second_review_requires_human),
+                risk_trigger_requires_human=True,
+            )
+
         action, approval = await self._actions.create(
             case_id=case_id,
             investigation=investigation,
@@ -102,7 +128,10 @@ class ActionService:
             actor_type="system",
             actor_ref="policy-guard",
             event_type="policy_evaluated",
-            details=self._policy_details(evaluation),
+            details=self._policy_details(
+                evaluation,
+                action_trigger_decision,
+            ),
         )
 
         if evaluation.decision == "block":
@@ -443,15 +472,34 @@ class ActionService:
         }
 
     @staticmethod
+    @staticmethod
     def _policy_details(
         evaluation: PolicyEvaluation,
+        action_trigger_decision: RiskTriggerDecision | None = None,
     ) -> dict[str, object]:
-        return {
+        details: dict[str, object] = {
             "decision": evaluation.decision,
             "risk_level": evaluation.risk_level,
             "requires_human_approval": (evaluation.requires_human_approval),
             "rationale": evaluation.rationale,
         }
+
+        if action_trigger_decision is not None:
+            details["action_risk_triggers"] = {
+                "human_review_signal": bool(action_trigger_decision.triggers),
+                "reason_codes": [str(code) for code in action_trigger_decision.reason_codes],
+                "triggers": [
+                    {
+                        "code": trigger.code,
+                        "source": trigger.source,
+                        "rationale": trigger.rationale,
+                    }
+                    for trigger in action_trigger_decision.triggers
+                ],
+                "bedrock_action_review_performed": False,
+            }
+
+        return details
 
     @staticmethod
     def _response(

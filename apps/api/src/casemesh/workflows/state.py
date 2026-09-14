@@ -22,5 +22,11 @@ class InvestigationState(TypedDict, total=False):
     findings_confidence: str
     findings_abstained: bool
     citations: list[dict[str, object]]
+    manual_second_review_requested: bool
+    evidence_conflict: bool
+    prompt_injection_signal: bool
+    security_flags: list[str]
+    risk_trigger_codes: list[str]
+    risk_triggers: dict[str, object]
     second_review_requested: bool
     second_review: dict[str, object]

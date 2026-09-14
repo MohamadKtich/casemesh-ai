@@ -191,6 +191,7 @@ async def start_investigation(
     return await service.start(
         case_id=case_id,
         objective=payload.objective,
+        manual_second_review_requested=(payload.manual_second_review_requested),
     )
 
 

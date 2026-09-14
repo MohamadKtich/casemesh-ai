@@ -27,6 +27,10 @@ class PolicyEvaluation:
 
 
 class PolicyGuard:
+    _RISK_TRIGGER_RATIONALE = (
+        "A deterministic action risk trigger requires explicit human approval."
+    )
+
     _KNOWN_ACTIONS = {
         "issue_sla_credit",
         "send_customer_notification",
@@ -56,13 +60,14 @@ class PolicyGuard:
         investigation_abstained: bool,
         citation_count: int,
         second_review_requires_human: bool = False,
+        risk_trigger_requires_human: bool = False,
     ) -> PolicyEvaluation:
-        """Evaluate CaseMesh policy and conservatively apply review signals.
+        """Evaluate authoritative policy and apply stricter review signals.
 
-        The independent second reviewer never authorizes actions. Its
-        human-review signal can only make the CaseMesh decision stricter.
-        It can never turn a block into approval or otherwise weaken the
-        authoritative base policy.
+        The CaseMesh base policy remains authoritative. Independent review
+        signals and deterministic action-risk triggers may only make an
+        otherwise non-blocked decision stricter. Neither signal can turn a
+        block into approval or otherwise authorize an action.
         """
 
         base_evaluation = self._evaluate_base(
@@ -73,17 +78,25 @@ class PolicyGuard:
             citation_count=citation_count,
         )
 
-        if not second_review_requires_human:
+        if base_evaluation.decision == "block":
             return base_evaluation
 
-        if base_evaluation.decision == "block":
+        escalation_reasons: list[str] = []
+
+        if second_review_requires_human:
+            escalation_reasons.append(self._SECOND_REVIEW_RATIONALE)
+
+        if risk_trigger_requires_human:
+            escalation_reasons.append(self._RISK_TRIGGER_RATIONALE)
+
+        if not escalation_reasons:
             return base_evaluation
 
         return PolicyEvaluation(
             decision="require_approval",
             risk_level=base_evaluation.risk_level,
             requires_human_approval=True,
-            rationale=(f"{base_evaluation.rationale} {self._SECOND_REVIEW_RATIONALE}"),
+            rationale=(f"{base_evaluation.rationale} {' '.join(escalation_reasons)}"),
         )
 
     def _evaluate_base(

@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class InvestigationStartRequest(BaseModel):
     objective: str = Field(min_length=5, max_length=2000)
+    manual_second_review_requested: bool = False
 
 
 class InvestigationEvidenceRef(BaseModel):
