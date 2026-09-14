@@ -11,11 +11,17 @@ from casemesh.grounding.context import EvidenceContextBuilder
 from casemesh.integrations.aws import (
     build_aws_intelligence_gateway,
 )
+from casemesh.integrations.aws.bedrock_guardrails import (
+    build_bedrock_safety_guardrail_provider,
+)
 from casemesh.integrations.aws.bedrock_review import (
     build_bedrock_second_review_provider,
 )
 from casemesh.intelligence.contracts import (
     SecondReviewProvider,
+)
+from casemesh.intelligence.guarded_review import (
+    GuardedSecondReviewProvider,
 )
 from casemesh.llm.factory import get_generation_provider
 from casemesh.mcp.client import CaseMeshMcpClient
@@ -103,16 +109,29 @@ def build_second_review_provider(
     *,
     settings: Settings,
 ) -> SecondReviewProvider | None:
-    """Build optional AWS second reviewer without changing trigger policy."""
+    """Build optional second review with independent safety guardrails."""
 
     if not settings.aws_bedrock_review_enabled:
         return None
 
     gateway = build_aws_intelligence_gateway(settings)
 
-    return build_bedrock_second_review_provider(
+    reviewer = build_bedrock_second_review_provider(
         settings=settings,
         gateway=gateway,
+    )
+
+    if not settings.aws_bedrock_guardrails_enabled:
+        return reviewer
+
+    guardrail = build_bedrock_safety_guardrail_provider(
+        settings=settings,
+        gateway=gateway,
+    )
+
+    return GuardedSecondReviewProvider(
+        reviewer=reviewer,
+        guardrail=guardrail,
     )
 
 

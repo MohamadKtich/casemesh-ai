@@ -11,6 +11,10 @@ from casemesh.intelligence.contracts import (
     SecondReviewProvider,
     SecondReviewRequest,
 )
+from casemesh.intelligence.guarded_review import (
+    SecondReviewGuardrailBlockedError,
+    SecondReviewGuardrailFailureError,
+)
 from casemesh.intelligence.second_review_gate import (
     evaluate_second_review,
 )
@@ -390,10 +394,10 @@ class InvestigationWorkflow:
     ) -> InvestigationState:
         """Run an explicitly requested advisory second review.
 
-        The trigger decision is intentionally outside this node. Phase 37I
-        will decide when second review is required. Provider/configuration
-        failures fail closed to human review without failing the primary
-        CaseMesh investigation.
+        Guardrail blocks and guardrail-provider failures fail closed to
+        human review without failing the primary CaseMesh investigation.
+        Trigger selection remains outside this node and is deferred to
+        Phase 37I.
         """
 
         provider = self._second_review_provider
@@ -428,6 +432,34 @@ class InvestigationWorkflow:
                     "forced_human_review": (decision.forced_human_review),
                     "reason_codes": list(decision.reason_codes),
                     "rationale": result.rationale,
+                }
+
+            except SecondReviewGuardrailBlockedError as exc:
+                reason_codes = ["guardrail_blocked"]
+
+                for reason_code in exc.assessment.reason_codes:
+                    if reason_code not in reason_codes:
+                        reason_codes.append(reason_code)
+
+                outcome = {
+                    "status": "guardrail_blocked",
+                    "guardrail_stage": exc.stage,
+                    "guardrail_provider": (exc.assessment.provider),
+                    "effective_route": "human_review",
+                    "forced_human_review": True,
+                    "reason_codes": reason_codes,
+                }
+
+            except SecondReviewGuardrailFailureError as exc:
+                outcome = {
+                    "status": "guardrail_failed",
+                    "guardrail_stage": exc.stage,
+                    "effective_route": "human_review",
+                    "forced_human_review": True,
+                    "reason_codes": [
+                        "guardrail_failure",
+                    ],
+                    "error_type": exc.error_type,
                 }
 
             except Exception as exc:

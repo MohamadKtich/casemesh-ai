@@ -100,6 +100,21 @@ class AWSIntelligenceGateway:
             region_name=self._settings.aws_ai_region,
         )
 
+    def bedrock_guardrails_runtime_client(self) -> object:
+        """Return Bedrock Runtime only when Guardrails are enabled."""
+
+        status = self.status()
+
+        self._require_capability(
+            capability="bedrock_guardrails",
+            state=status.guardrails,
+        )
+
+        return self._clients().create_client(
+            service_name="bedrock-runtime",
+            region_name=self._settings.aws_ai_region,
+        )
+
     def textract_client(self) -> object:
         status = self.status()
 
