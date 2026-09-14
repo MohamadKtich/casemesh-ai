@@ -3,6 +3,7 @@ from uuid import UUID
 
 from fastapi import HTTPException, status
 
+from casemesh.alerts import AlertDispatcher
 from casemesh.core.config import Settings
 from casemesh.db.models import InvestigationRun
 from casemesh.intelligence.contracts import SecondReviewProvider
@@ -31,6 +32,7 @@ class InvestigationService:
         retrieval_service: RetrievalSearcher,
         answer_service: AnswerService,
         second_review_provider: SecondReviewProvider | None = None,
+        alert_dispatcher: AlertDispatcher | None = None,
     ) -> None:
         self._settings = settings
         self._cases = case_reader
@@ -38,6 +40,9 @@ class InvestigationService:
         self._retrieval = retrieval_service
         self._answers = answer_service
         self._second_review_provider = second_review_provider
+        self._alert_dispatcher = (
+            alert_dispatcher if alert_dispatcher is not None else AlertDispatcher(None)
+        )
 
     async def start(
         self,
@@ -68,6 +73,7 @@ class InvestigationService:
             retrieval_service=self._retrieval,
             answer_service=self._answers,
             second_review_provider=(self._second_review_provider),
+            alert_dispatcher=self._alert_dispatcher,
         )
 
         initial_state: InvestigationState = {

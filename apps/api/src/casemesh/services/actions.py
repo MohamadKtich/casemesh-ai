@@ -5,6 +5,11 @@ from uuid import UUID
 
 from fastapi import HTTPException, status
 
+from casemesh.alerts import (
+    AlertDispatcher,
+    AlertEvent,
+    AlertSeverity,
+)
 from casemesh.core.config import Settings
 from casemesh.db.models import ActionRequest, Approval, AuditEvent
 from casemesh.intelligence.risk_triggers import (
@@ -38,6 +43,7 @@ class ActionService:
         investigation_repository: InvestigationRepository,
         action_repository: ActionRepository,
         policy_guard: PolicyGuard,
+        alert_dispatcher: AlertDispatcher | None = None,
     ) -> None:
         self._settings = settings
         self._cases = case_repository
@@ -45,6 +51,7 @@ class ActionService:
         self._actions = action_repository
         self._policy = policy_guard
         self._risk_trigger_engine = RiskTriggerEngine()
+        self._alerts = alert_dispatcher if alert_dispatcher is not None else AlertDispatcher(None)
 
     async def propose(
         self,
@@ -227,6 +234,17 @@ class ActionService:
             event_type="approval_requested",
             details=interrupt_payload,
         )
+
+        approval_alert = self._approval_required_alert_event(
+            case_id=case_id,
+            investigation_run_id=(investigation.id),
+            action_request_id=action.id,
+            risk_level=(evaluation.risk_level),
+            second_review_requires_human=(second_review_requires_human),
+            action_trigger_decision=(action_trigger_decision),
+        )
+
+        await self._alerts.dispatch(approval_alert)
 
         return self._response(
             action=action,
@@ -412,6 +430,45 @@ class ActionService:
             action_request_id=action_request_id,
         )
         return [self._audit_response(event) for event in events]
+
+    @staticmethod
+    def _approval_required_alert_event(
+        *,
+        case_id: UUID,
+        investigation_run_id: UUID,
+        action_request_id: UUID,
+        risk_level: str,
+        second_review_requires_human: bool,
+        action_trigger_decision: RiskTriggerDecision,
+    ) -> AlertEvent:
+        reason_codes = [str(code) for code in action_trigger_decision.reason_codes]
+
+        if second_review_requires_human and "SECOND_REVIEW_REQUIRES_HUMAN" not in reason_codes:
+            reason_codes.append("SECOND_REVIEW_REQUIRES_HUMAN")
+
+        if not reason_codes:
+            reason_codes.append("POLICY_REQUIRES_APPROVAL")
+
+        severity: AlertSeverity
+
+        if risk_level == "critical":
+            severity = "critical"
+        elif risk_level == "high":
+            severity = "high"
+        else:
+            severity = "warning"
+
+        return AlertEvent(
+            event_type="APPROVAL_REQUIRED",
+            severity=severity,
+            source="action",
+            case_id=case_id,
+            investigation_run_id=(investigation_run_id),
+            action_request_id=(action_request_id),
+            reason_codes=tuple(reason_codes),
+            risk_level=risk_level,
+            status="awaiting_approval",
+        )
 
     @staticmethod
     def _second_review_requires_human_review(

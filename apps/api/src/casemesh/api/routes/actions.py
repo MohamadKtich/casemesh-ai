@@ -6,6 +6,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from casemesh.core.config import get_settings
 from casemesh.db.session import get_db_session
+from casemesh.integrations.aws.sns_alerts import (
+    build_aws_alert_dispatcher,
+)
 from casemesh.policy.guardrails import PolicyGuard
 from casemesh.repositories.actions import ActionRepository
 from casemesh.repositories.cases import CaseRepository
@@ -41,16 +44,14 @@ def get_action_service(
     return ActionService(
         settings=settings,
         case_repository=CaseRepository(session),
-        investigation_repository=(
-            InvestigationRepository(session)
-        ),
+        investigation_repository=(InvestigationRepository(session)),
         action_repository=ActionRepository(session),
         policy_guard=PolicyGuard(
             allow_internal_note_without_review=(
-                settings
-                .approval_allow_internal_note_without_review
+                settings.approval_allow_internal_note_without_review
             )
         ),
+        alert_dispatcher=build_aws_alert_dispatcher(settings=settings),
     )
 
 
@@ -162,9 +163,7 @@ async def list_actions(
     case_id: UUID,
     service: ActionServiceDep,
 ) -> list[ActionRequestResponse]:
-    return await service.list(
-        case_id=case_id
-    )
+    return await service.list(case_id=case_id)
 
 
 @router.get(

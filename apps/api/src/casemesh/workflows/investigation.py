@@ -4,6 +4,12 @@ from uuid import UUID
 
 from langgraph.graph import END, START, StateGraph
 
+from casemesh.alerts import (
+    AlertDispatcher,
+    AlertDispatchResult,
+    AlertEvent,
+    AlertSeverity,
+)
 from casemesh.core.config import Settings
 from casemesh.db.models import InvestigationRun
 from casemesh.intelligence.contracts import (
@@ -85,6 +91,7 @@ class InvestigationWorkflow:
         retrieval_service: RetrievalSearcher,
         answer_service: AnswerService,
         second_review_provider: SecondReviewProvider | None = None,
+        alert_dispatcher: AlertDispatcher | None = None,
     ) -> None:
         self._run = run
         self._settings = settings
@@ -93,6 +100,7 @@ class InvestigationWorkflow:
         self._retrieval = retrieval_service
         self._answers = answer_service
         self._second_review_provider = second_review_provider
+        self._alerts = alert_dispatcher if alert_dispatcher is not None else AlertDispatcher(None)
         self._risk_trigger_engine = RiskTriggerEngine()
         self._graph: Any = self._build_graph()
 
@@ -563,6 +571,16 @@ class InvestigationWorkflow:
                     "error_type": type(exc).__name__,
                 }
 
+        alert_event = self._second_review_alert_event(
+            state=state,
+            outcome=outcome,
+        )
+
+        if alert_event is not None:
+            alert_result = await self._alerts.dispatch(alert_event)
+
+            outcome["alert_delivery"] = self._alert_delivery_metadata(alert_result)
+
         self._run.current_step = "second_review"
 
         metadata = dict(self._run.metadata_json or {})
@@ -577,6 +595,106 @@ class InvestigationWorkflow:
             "current_step": "second_review",
             "second_review": outcome,
         }
+
+    def _second_review_alert_event(
+        self,
+        *,
+        state: InvestigationState,
+        outcome: dict[str, object],
+    ) -> AlertEvent | None:
+        raw_status = outcome.get("status")
+
+        status = (
+            raw_status.strip()
+            if isinstance(
+                raw_status,
+                str,
+            )
+            and raw_status.strip()
+            else None
+        )
+
+        raw_reason_codes = outcome.get(
+            "reason_codes",
+            [],
+        )
+
+        reason_codes: tuple[str, ...] = ()
+
+        if isinstance(
+            raw_reason_codes,
+            (list, tuple),
+        ):
+            reason_codes = tuple(
+                value.strip()
+                for value in raw_reason_codes
+                if isinstance(
+                    value,
+                    str,
+                )
+                and value.strip()
+            )
+
+        raw_risk_level = outcome.get("risk_level")
+
+        risk_level = (
+            raw_risk_level.strip()
+            if isinstance(
+                raw_risk_level,
+                str,
+            )
+            and raw_risk_level.strip()
+            else None
+        )
+
+        if status == "completed" and "review_disagreed" in reason_codes:
+            severity: AlertSeverity = "critical" if risk_level == "critical" else "high"
+
+            return AlertEvent(
+                event_type=("SECOND_REVIEW_DISAGREEMENT"),
+                severity=severity,
+                source="second_review",
+                case_id=state["case_id"],
+                investigation_run_id=(self._run.id),
+                reason_codes=reason_codes,
+                risk_level=risk_level,
+                status=status,
+            )
+
+        if status == "guardrail_blocked":
+            return AlertEvent(
+                event_type="GUARDRAIL_BLOCK",
+                severity="critical",
+                source="guardrail",
+                case_id=state["case_id"],
+                investigation_run_id=(self._run.id),
+                reason_codes=reason_codes,
+                status=status,
+            )
+
+        return None
+
+    @staticmethod
+    def _alert_delivery_metadata(
+        result: AlertDispatchResult,
+    ) -> dict[str, object]:
+        metadata: dict[str, object] = {
+            "event_type": result.event_type,
+            "status": result.status,
+            "attempted": result.attempted,
+            "delivered": result.delivered,
+        }
+
+        if result.provider is not None:
+            metadata["provider"] = result.provider
+
+        if result.message_id is not None:
+            metadata["message_id"] = result.message_id
+
+        if result.error_type is not None:
+            metadata["error_type"] = result.error_type
+
+        return metadata
 
     def _build_second_review_request(
         self,

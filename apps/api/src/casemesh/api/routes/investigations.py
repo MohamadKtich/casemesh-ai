@@ -17,6 +17,9 @@ from casemesh.integrations.aws.bedrock_guardrails import (
 from casemesh.integrations.aws.bedrock_review import (
     build_bedrock_second_review_provider,
 )
+from casemesh.integrations.aws.sns_alerts import (
+    build_aws_alert_dispatcher,
+)
 from casemesh.intelligence.contracts import (
     SecondReviewProvider,
 )
@@ -168,6 +171,7 @@ def get_investigation_service(
                 settings=settings,
             )
         ),
+        alert_dispatcher=build_aws_alert_dispatcher(settings=settings),
     )
 
 
