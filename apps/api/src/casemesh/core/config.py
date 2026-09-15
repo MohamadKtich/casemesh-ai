@@ -102,6 +102,17 @@ class Settings(BaseSettings):
     # Mock mode is deterministic, offline, and cost-free.
     # SDK mode permits real boto3 clients when a capability is enabled.
     aws_client_mode: Literal["mock", "sdk"] = "mock"
+    aws_identity_mode: Literal[
+        "default_chain",
+        "azure_federated",
+    ] = "default_chain"
+
+    # Non-secret federation configuration only.
+    # Never add AWS access keys or session tokens here.
+    aws_federated_role_arn: str = ""
+    aws_federated_audience: str = ""
+    azure_managed_identity_client_id: str = ""
+    aws_federated_role_session_name: str = "casemesh-api"
 
     # Bedrock, Guardrails, and human-escalation services.
     aws_ai_region: str = "me-central-1"
@@ -211,6 +222,41 @@ class Settings(BaseSettings):
         extra="ignore",
         case_sensitive=False,
     )
+
+    @model_validator(mode="after")
+    def _validate_aws_identity_configuration(
+        self,
+    ) -> "Settings":
+        if self.aws_identity_mode != "azure_federated":
+            return self
+
+        if not self.aws_intelligence_enabled:
+            raise ValueError("azure_federated AWS identity requires aws_intelligence_enabled=true.")
+
+        if self.aws_client_mode != "sdk":
+            raise ValueError("azure_federated AWS identity requires aws_client_mode='sdk'.")
+
+        required_values = {
+            "aws_federated_role_arn": (self.aws_federated_role_arn),
+            "aws_federated_audience": (self.aws_federated_audience),
+            "azure_managed_identity_client_id": (self.azure_managed_identity_client_id),
+            "aws_federated_role_session_name": (self.aws_federated_role_session_name),
+        }
+
+        for (
+            field_name,
+            raw_value,
+        ) in required_values.items():
+            if (
+                not isinstance(
+                    raw_value,
+                    str,
+                )
+                or not raw_value.strip()
+            ):
+                raise ValueError(f"azure_federated AWS identity requires {field_name}.")
+
+        return self
 
 
 @lru_cache

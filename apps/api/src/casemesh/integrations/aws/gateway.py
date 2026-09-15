@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from casemesh.core.config import Settings
 from casemesh.integrations.aws.clients import (
     AWSClientFactory,
-    Boto3AWSClientFactory,
 )
+from casemesh.integrations.aws.federated_credentials import build_aws_client_factory
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,11 +167,11 @@ class AWSIntelligenceGateway:
             region_name=self._settings.aws_ai_region,
         )
 
-    def _clients(self) -> AWSClientFactory:
+    def _clients(
+        self,
+    ) -> AWSClientFactory:
         if self._client_factory is None:
-            self._client_factory = Boto3AWSClientFactory(
-                request_timeout_seconds=(self._settings.aws_request_timeout_seconds),
-            )
+            self._client_factory = build_aws_client_factory(self._settings)
 
         return self._client_factory
 

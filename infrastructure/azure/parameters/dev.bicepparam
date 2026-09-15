@@ -5,6 +5,7 @@ param staticWebAppLocation = 'eastasia'
 
 param environmentName = 'casemesh-env-dev'
 param containerAppName = 'casemesh-api-dev'
+param managedIdentityName = 'casemesh-api-aws-dev'
 param staticWebAppName = 'casemesh-web-dev'
 
 param containerImage = readEnvironmentVariable('CASEMESH_CONTAINER_IMAGE')

@@ -179,3 +179,110 @@ def test_aws_operational_limits_must_be_positive(
             _env_file=None,
             **{setting_name: invalid_value},
         )
+
+
+def test_aws_identity_mode_defaults_to_default_chain() -> None:
+    settings = Settings(
+        _env_file=None,
+    )
+
+    assert settings.aws_identity_mode == "default_chain"
+
+    assert settings.aws_federated_role_arn == ""
+
+    assert settings.aws_federated_audience == ""
+
+    assert settings.azure_managed_identity_client_id == ""
+
+    assert settings.aws_federated_role_session_name == "casemesh-api"
+
+
+def test_default_chain_does_not_require_federation_settings() -> None:
+    settings = Settings(
+        _env_file=None,
+        aws_intelligence_enabled=True,
+        aws_client_mode="sdk",
+        aws_identity_mode="default_chain",
+    )
+
+    assert settings.aws_identity_mode == "default_chain"
+
+
+def test_azure_federated_identity_requires_master_switch() -> None:
+    with pytest.raises(
+        ValueError,
+        match="aws_intelligence_enabled",
+    ):
+        Settings(
+            _env_file=None,
+            aws_identity_mode=("azure_federated"),
+            aws_client_mode="sdk",
+            aws_federated_role_arn=("arn:aws:iam::123456789012:role/CaseMeshRuntime"),
+            aws_federated_audience=("api://casemesh-aws"),
+            azure_managed_identity_client_id=("11111111-1111-1111-1111-111111111111"),
+        )
+
+
+def test_azure_federated_identity_requires_sdk_mode() -> None:
+    with pytest.raises(
+        ValueError,
+        match="aws_client_mode='sdk'",
+    ):
+        Settings(
+            _env_file=None,
+            aws_intelligence_enabled=True,
+            aws_identity_mode=("azure_federated"),
+            aws_client_mode="mock",
+            aws_federated_role_arn=("arn:aws:iam::123456789012:role/CaseMeshRuntime"),
+            aws_federated_audience=("api://casemesh-aws"),
+            azure_managed_identity_client_id=("11111111-1111-1111-1111-111111111111"),
+        )
+
+
+@pytest.mark.parametrize(
+    "field_name",
+    (
+        "aws_federated_role_arn",
+        "aws_federated_audience",
+        "azure_managed_identity_client_id",
+        "aws_federated_role_session_name",
+    ),
+)
+def test_azure_federated_identity_requires_complete_configuration(
+    field_name: str,
+) -> None:
+    values: dict[str, object] = {
+        "_env_file": None,
+        "aws_intelligence_enabled": True,
+        "aws_client_mode": "sdk",
+        "aws_identity_mode": ("azure_federated"),
+        "aws_federated_role_arn": ("arn:aws:iam::123456789012:role/CaseMeshRuntime"),
+        "aws_federated_audience": ("api://casemesh-aws"),
+        "azure_managed_identity_client_id": ("11111111-1111-1111-1111-111111111111"),
+        "aws_federated_role_session_name": ("casemesh-api"),
+    }
+
+    values[field_name] = " "
+
+    with pytest.raises(
+        ValueError,
+        match=field_name,
+    ):
+        Settings(
+            **values,
+        )
+
+
+def test_valid_azure_federated_identity_configuration() -> None:
+    settings = Settings(
+        _env_file=None,
+        aws_intelligence_enabled=True,
+        aws_client_mode="sdk",
+        aws_identity_mode=("azure_federated"),
+        aws_federated_role_arn=("arn:aws:iam::123456789012:role/CaseMeshRuntime"),
+        aws_federated_audience=("api://casemesh-aws"),
+        azure_managed_identity_client_id=("11111111-1111-1111-1111-111111111111"),
+        aws_federated_role_session_name=("casemesh-api"),
+    )
+
+    assert settings.aws_identity_mode == "azure_federated"

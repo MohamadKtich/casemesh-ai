@@ -12,6 +12,9 @@ param environmentName string = 'casemesh-env-dev'
 @description('CaseMesh API Container App name.')
 param containerAppName string = 'casemesh-api-dev'
 
+@description('User-assigned managed identity used by the CaseMesh API for AWS federation.')
+param managedIdentityName string = 'casemesh-api-aws-dev'
+
 @description('CaseMesh frontend Static Web App name.')
 param staticWebAppName string = 'casemesh-web-dev'
 
@@ -111,12 +114,24 @@ module environment './modules/environment.bicep' = {
   }
 }
 
+module apiIdentity './modules/managed-identity.bicep' = {
+  name: 'casemesh-api-managed-identity'
+  params: {
+    managedIdentityName: managedIdentityName
+    location: location
+    tags: commonTags
+  }
+}
+
 module api './modules/container-app.bicep' = {
   name: 'casemesh-container-app'
   params: {
     containerAppName: containerAppName
     location: location
     environmentId: environment.outputs.environmentId
+
+    managedIdentityResourceId: apiIdentity.outputs.managedIdentityId
+    managedIdentityClientId: apiIdentity.outputs.managedIdentityClientId
 
     containerImage: containerImage
     targetPort: targetPort
@@ -168,6 +183,12 @@ output environmentName string = environment.outputs.environmentName
 output containerAppName string = api.outputs.containerAppName
 
 output containerAppUrl string = 'https://${api.outputs.fqdn}'
+
+output managedIdentityResourceId string = apiIdentity.outputs.managedIdentityId
+
+output managedIdentityClientId string = apiIdentity.outputs.managedIdentityClientId
+
+output managedIdentityPrincipalId string = apiIdentity.outputs.managedIdentityPrincipalId
 
 output staticWebAppName string = web.outputs.staticWebAppName
 

@@ -297,6 +297,7 @@ def test_sdk_gateway_factory_propagates_configured_timeout(
     monkeypatch,
 ) -> None:
     import casemesh.integrations.aws.factory as factory_module
+    import casemesh.integrations.aws.federated_credentials as federated_credentials_module
     from casemesh.core.config import Settings
 
     observed: list[float] = []
@@ -321,7 +322,7 @@ def test_sdk_gateway_factory_propagates_configured_timeout(
             raise AssertionError("No AWS client should be requested during gateway construction.")
 
     monkeypatch.setattr(
-        factory_module,
+        federated_credentials_module,
         "Boto3AWSClientFactory",
         RecordingFactory,
     )
@@ -345,6 +346,7 @@ def test_sdk_gateway_factory_propagates_configured_timeout(
 def test_direct_gateway_fallback_propagates_configured_timeout(
     monkeypatch,
 ) -> None:
+    import casemesh.integrations.aws.federated_credentials as federated_credentials_module
     import casemesh.integrations.aws.gateway as gateway_module
     from casemesh.core.config import Settings
 
@@ -370,7 +372,7 @@ def test_direct_gateway_fallback_propagates_configured_timeout(
             return object()
 
     monkeypatch.setattr(
-        gateway_module,
+        federated_credentials_module,
         "Boto3AWSClientFactory",
         RecordingFactory,
     )

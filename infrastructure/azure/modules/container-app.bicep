@@ -2,6 +2,9 @@ param containerAppName string
 param location string
 param environmentId string
 
+param managedIdentityResourceId string
+param managedIdentityClientId string
+
 param containerImage string
 param targetPort int = 8000
 
@@ -49,6 +52,13 @@ resource containerApp 'Microsoft.App/containerApps@2026-01-01' = {
   name: containerAppName
   location: location
   tags: tags
+
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${managedIdentityResourceId}': {}
+    }
+  }
 
   properties: {
     environmentId: environmentId
@@ -119,6 +129,10 @@ resource containerApp 'Microsoft.App/containerApps@2026-01-01' = {
             {
               name: 'APP_ENV'
               value: 'cloud'
+            }
+            {
+              name: 'AZURE_MANAGED_IDENTITY_CLIENT_ID'
+              value: managedIdentityClientId
             }
             {
               name: 'DATABASE_URL'

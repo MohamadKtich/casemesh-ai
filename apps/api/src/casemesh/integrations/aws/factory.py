@@ -1,9 +1,8 @@
 from casemesh.core.config import Settings
 from casemesh.integrations.aws.clients import (
     AWSClientFactory,
-    Boto3AWSClientFactory,
-    MockAWSClientFactory,
 )
+from casemesh.integrations.aws.federated_credentials import build_aws_client_factory
 from casemesh.integrations.aws.gateway import AWSIntelligenceGateway
 
 
@@ -12,17 +11,12 @@ def build_aws_intelligence_gateway(
     *,
     client_factory: AWSClientFactory | None = None,
 ) -> AWSIntelligenceGateway:
-    """Build the AWS gateway using the configured client mode."""
+    """Build the AWS gateway using the configured client and identity mode."""
 
     selected_factory = client_factory
 
     if selected_factory is None:
-        if settings.aws_client_mode == "mock":
-            selected_factory = MockAWSClientFactory()
-        else:
-            selected_factory = Boto3AWSClientFactory(
-                request_timeout_seconds=(settings.aws_request_timeout_seconds),
-            )
+        selected_factory = build_aws_client_factory(settings)
 
     return AWSIntelligenceGateway(
         settings,
