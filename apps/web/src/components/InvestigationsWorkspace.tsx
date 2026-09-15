@@ -50,6 +50,37 @@ function formatDate(
 }
 
 
+function formatReviewValue(
+  value: string | null,
+): string {
+  if (!value) {
+    return "N/A"
+  }
+
+  return value
+    .split("_")
+    .join(" ")
+}
+
+
+function formatReasonCodes(
+  values: string[],
+): string {
+  if (values.length === 0) {
+    return "None"
+  }
+
+  return values
+    .map(
+      (value) =>
+        value
+          .split("_")
+          .join(" "),
+    )
+    .join(", ")
+}
+
+
 function InvestigationsWorkspace({
   caseRecord,
   onBack,
@@ -508,6 +539,172 @@ function InvestigationsWorkspace({
                       </strong>
                     </div>
                   </div>
+
+                  {selectedRun.risk_triggers && (
+                    <>
+                      <div className="chunks-header">
+                        <div>
+                          <div className="section-label">
+                            RISK REVIEW SIGNALS
+                          </div>
+
+                          <h3>
+                            Risk Review Signals
+                          </h3>
+                        </div>
+                      </div>
+
+                      <div className="document-metadata">
+                        <div>
+                          <span>
+                            Second Review Requested
+                          </span>
+
+                          <strong>
+                            {
+                              selectedRun
+                                .risk_triggers
+                                .second_review_requested
+                                ? "Yes"
+                                : "No"
+                            }
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            Reason Codes
+                          </span>
+
+                          <strong>
+                            {formatReasonCodes(
+                              selectedRun
+                                .risk_triggers
+                                .reason_codes,
+                            )}
+                          </strong>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {selectedRun.second_review && (
+                    <>
+                      <div className="chunks-header">
+                        <div>
+                          <div className="section-label">
+                            INDEPENDENT SECOND REVIEW
+                          </div>
+
+                          <h3>
+                            Independent Second Review
+                          </h3>
+                        </div>
+                      </div>
+
+                      <div className="document-metadata">
+                        <div>
+                          <span>
+                            Status
+                          </span>
+
+                          <strong>
+                            {formatReviewValue(
+                              selectedRun
+                                .second_review
+                                .status,
+                            )}
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            Agreement
+                          </span>
+
+                          <strong>
+                            {formatReviewValue(
+                              selectedRun
+                                .second_review
+                                .agreement,
+                            )}
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            Risk Level
+                          </span>
+
+                          <strong>
+                            {formatReviewValue(
+                              selectedRun
+                                .second_review
+                                .risk_level,
+                            )}
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            Effective Route
+                          </span>
+
+                          <strong>
+                            {formatReviewValue(
+                              selectedRun
+                                .second_review
+                                .effective_route,
+                            )}
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            Forced Human Review
+                          </span>
+
+                          <strong>
+                            {
+                              selectedRun
+                                .second_review
+                                .forced_human_review
+                                ? "Yes"
+                                : "No"
+                            }
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            Guardrail Decision
+                          </span>
+
+                          <strong>
+                            {formatReviewValue(
+                              selectedRun
+                                .second_review
+                                .guardrail_decision,
+                            )}
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            Reason Codes
+                          </span>
+
+                          <strong>
+                            {formatReasonCodes(
+                              selectedRun
+                                .second_review
+                                .reason_codes,
+                            )}
+                          </strong>
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <div className="chunks-header">
                     <div>

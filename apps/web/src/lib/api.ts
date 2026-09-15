@@ -147,6 +147,55 @@ export interface InvestigationCitation {
   excerpt: string
 }
 
+export interface InvestigationRiskTriggerSummary {
+  second_review_requested: boolean
+  reason_codes: string[]
+}
+
+
+export type InvestigationSecondReviewStatus =
+  | "completed"
+  | "unavailable"
+  | "failed"
+  | "budget_exhausted"
+  | "guardrail_blocked"
+  | "guardrail_failed"
+
+
+export type InvestigationSecondReviewAgreement =
+  | "agree"
+  | "disagree"
+  | "uncertain"
+
+
+export type InvestigationSecondReviewRiskLevel =
+  | "low"
+  | "medium"
+  | "high"
+  | "critical"
+
+
+export type InvestigationSecondReviewRoute =
+  | "continue"
+  | "human_review"
+
+
+export type InvestigationGuardrailDecision =
+  | "blocked"
+  | "failed"
+
+
+export interface InvestigationSecondReviewSummary {
+  status: InvestigationSecondReviewStatus | null
+  agreement: InvestigationSecondReviewAgreement | null
+  risk_level: InvestigationSecondReviewRiskLevel | null
+  provider_route: InvestigationSecondReviewRoute | null
+  effective_route: InvestigationSecondReviewRoute | null
+  forced_human_review: boolean
+  reason_codes: string[]
+  guardrail_decision: InvestigationGuardrailDecision | null
+}
+
 
 export interface InvestigationRun {
   workflow_id: string
@@ -164,6 +213,8 @@ export interface InvestigationRun {
   evidence: InvestigationEvidenceRef[]
   gaps: InvestigationGap[]
   citations: InvestigationCitation[]
+  risk_triggers?: InvestigationRiskTriggerSummary | null
+  second_review?: InvestigationSecondReviewSummary | null
   error_message: string | null
   started_at: string | null
   completed_at: string | null
