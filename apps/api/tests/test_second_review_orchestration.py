@@ -238,7 +238,7 @@ async def test_review_request_uses_citations_and_gap_codes() -> None:
     assert outcome["forced_human_review"] is True
     assert outcome["reason_codes"] == ["review_disagreed"]
 
-    assert repository.saved == 1
+    assert repository.saved == 2
     assert run.current_step == "second_review"
 
     assert run.metadata_json["existing_metadata"] == "preserved"
@@ -272,7 +272,7 @@ async def test_safe_review_may_continue_to_policy() -> None:
     assert outcome["forced_human_review"] is False
     assert outcome["reason_codes"] == []
 
-    assert repository.saved == 1
+    assert repository.saved == 2
     assert run.metadata_json["second_review"]["effective_route"] == "continue"
 
 
@@ -324,7 +324,7 @@ async def test_provider_failure_fails_closed_without_breaking_investigation() ->
     assert outcome["reason_codes"] == ["provider_failure"]
     assert outcome["error_type"] == "RuntimeError"
 
-    assert repository.saved == 1
+    assert repository.saved == 2
     assert run.current_step == "second_review"
 
 

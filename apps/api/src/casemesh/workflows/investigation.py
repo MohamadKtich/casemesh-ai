@@ -484,24 +484,150 @@ class InvestigationWorkflow:
             "second_review_requested": (decision.request_second_review),
         }
 
+    def _existing_second_review_outcome(
+        self,
+    ) -> dict[str, object] | None:
+        metadata = dict(self._run.metadata_json or {})
+
+        raw_outcome = metadata.get("second_review")
+
+        if not isinstance(
+            raw_outcome,
+            dict,
+        ):
+            return None
+
+        raw_status = raw_outcome.get("status")
+
+        if (
+            not isinstance(
+                raw_status,
+                str,
+            )
+            or not raw_status.strip()
+        ):
+            return None
+
+        return {
+            str(key): value
+            for key, value in raw_outcome.items()
+            if isinstance(
+                key,
+                str,
+            )
+        }
+
+    @staticmethod
+    def _reserved_second_review_attempts(
+        metadata: dict[str, object],
+    ) -> int:
+        raw_budget = metadata.get("second_review_budget")
+
+        if not isinstance(
+            raw_budget,
+            dict,
+        ):
+            return 0
+
+        raw_attempts = raw_budget.get("reserved_attempts")
+
+        if (
+            isinstance(
+                raw_attempts,
+                int,
+            )
+            and not isinstance(
+                raw_attempts,
+                bool,
+            )
+            and raw_attempts >= 0
+        ):
+            return raw_attempts
+
+        return 0
+
+    async def _reserve_second_review_attempt(
+        self,
+    ) -> tuple[
+        bool,
+        int,
+    ]:
+        metadata = dict(self._run.metadata_json or {})
+
+        reserved_attempts = self._reserved_second_review_attempts(metadata)
+
+        max_reviews = self._settings.aws_max_reviews_per_investigation
+
+        if reserved_attempts >= max_reviews:
+            metadata["second_review_budget"] = {
+                "reserved_attempts": (reserved_attempts),
+                "max_reviews": (max_reviews),
+            }
+
+            self._run.metadata_json = metadata
+
+            return (
+                False,
+                reserved_attempts,
+            )
+
+        next_attempt = reserved_attempts + 1
+
+        metadata["second_review_budget"] = {
+            "reserved_attempts": (next_attempt),
+            "max_reviews": (max_reviews),
+        }
+
+        self._run.metadata_json = metadata
+
+        # Persist before the external provider call.
+        # If this save fails, the provider must not run.
+        await self._investigations.save(self._run)
+
+        return (
+            True,
+            next_attempt,
+        )
+
+    def _is_real_aws_second_review_provider(
+        self,
+        provider: SecondReviewProvider,
+    ) -> bool:
+        """Identify the configured real Bedrock SDK review boundary."""
+        return (
+            self._settings.aws_client_mode == "sdk"
+            and self._settings.aws_bedrock_review_enabled
+            and provider.provider_name == "aws-bedrock"
+        )
+
     async def _second_review(
         self,
         state: InvestigationState,
     ) -> InvestigationState:
-        """Run an explicitly requested advisory second review.
+        """Run one replay-safe advisory second review.
 
-        Guardrail blocks and guardrail-provider failures fail closed to
-        human review without failing the primary CaseMesh investigation.
-        Trigger selection remains outside this node and is deferred to
-        Phase 37I.
+        Existing terminal outcomes are reused without a new provider or alert
+        call. External review attempts are reserved durably before invocation.
+        Exhausted budgets fail closed to human review.
         """
+
+        existing_outcome = self._existing_second_review_outcome()
+
+        if existing_outcome is not None:
+            return {
+                "current_step": "second_review",
+                "second_review": (existing_outcome),
+            }
 
         provider = self._second_review_provider
 
         if provider is None:
-            outcome: dict[str, object] = {
+            outcome: dict[
+                str,
+                object,
+            ] = {
                 "status": "unavailable",
-                "effective_route": "human_review",
+                "effective_route": ("human_review"),
                 "forced_human_review": True,
                 "reason_codes": [
                     "provider_unavailable",
@@ -511,65 +637,110 @@ class InvestigationWorkflow:
         else:
             try:
                 request = self._build_second_review_request(state)
-
-                result = await provider.review(request)
-
-                decision = evaluate_second_review(result)
-
-                outcome = {
-                    "status": "completed",
-                    "provider": result.provider,
-                    "model": result.model,
-                    "agreement": result.agreement,
-                    "risk_level": result.risk_level,
-                    "concerns": list(result.concerns),
-                    "provider_route": (result.recommended_route),
-                    "effective_route": (decision.effective_route),
-                    "forced_human_review": (decision.forced_human_review),
-                    "reason_codes": list(decision.reason_codes),
-                    "rationale": result.rationale,
-                }
-
-            except SecondReviewGuardrailBlockedError as exc:
-                reason_codes = ["guardrail_blocked"]
-
-                for reason_code in exc.assessment.reason_codes:
-                    if reason_code not in reason_codes:
-                        reason_codes.append(reason_code)
-
-                outcome = {
-                    "status": "guardrail_blocked",
-                    "guardrail_stage": exc.stage,
-                    "guardrail_provider": (exc.assessment.provider),
-                    "effective_route": "human_review",
-                    "forced_human_review": True,
-                    "reason_codes": reason_codes,
-                }
-
-            except SecondReviewGuardrailFailureError as exc:
-                outcome = {
-                    "status": "guardrail_failed",
-                    "guardrail_stage": exc.stage,
-                    "effective_route": "human_review",
-                    "forced_human_review": True,
-                    "reason_codes": [
-                        "guardrail_failure",
-                    ],
-                    "error_type": exc.error_type,
-                }
-
             except Exception as exc:
+                # Local request-validation failures do not consume
+                # an external-review attempt.
                 outcome = {
                     "status": "failed",
-                    "provider": provider.provider_name,
-                    "model": provider.model_name,
-                    "effective_route": "human_review",
+                    "provider": (provider.provider_name),
+                    "model": (provider.model_name),
+                    "effective_route": ("human_review"),
                     "forced_human_review": True,
                     "reason_codes": [
                         "provider_failure",
                     ],
-                    "error_type": type(exc).__name__,
+                    "error_type": (type(exc).__name__),
                 }
+
+            else:
+                (
+                    attempt_reserved,
+                    reserved_attempts,
+                ) = await self._reserve_second_review_attempt()
+
+                if not attempt_reserved:
+                    outcome = {
+                        "status": ("budget_exhausted"),
+                        "effective_route": ("human_review"),
+                        "forced_human_review": True,
+                        "reason_codes": [
+                            "review_budget_exhausted",
+                        ],
+                        "reserved_attempts": (reserved_attempts),
+                        "max_reviews": (self._settings.aws_max_reviews_per_investigation),
+                    }
+
+                else:
+                    try:
+                        result = await provider.review(request)
+
+                        decision = evaluate_second_review(result)
+
+                        outcome = {
+                            "status": "completed",
+                            "provider": (result.provider),
+                            "model": result.model,
+                            "agreement": (result.agreement),
+                            "risk_level": (result.risk_level),
+                            "concerns": list(result.concerns),
+                            "provider_route": (result.recommended_route),
+                            "effective_route": (decision.effective_route),
+                            "forced_human_review": (decision.forced_human_review),
+                            "reason_codes": list(decision.reason_codes),
+                            "rationale": (result.rationale),
+                        }
+
+                    except SecondReviewGuardrailBlockedError as exc:
+                        reason_codes = ["guardrail_blocked"]
+
+                        for reason_code in exc.assessment.reason_codes:
+                            if reason_code not in reason_codes:
+                                reason_codes.append(reason_code)
+
+                        outcome = {
+                            "status": ("guardrail_blocked"),
+                            "guardrail_stage": (exc.stage),
+                            "guardrail_provider": (exc.assessment.provider),
+                            "effective_route": ("human_review"),
+                            "forced_human_review": True,
+                            "reason_codes": (reason_codes),
+                        }
+
+                    except SecondReviewGuardrailFailureError as exc:
+                        outcome = {
+                            "status": ("guardrail_failed"),
+                            "guardrail_stage": (exc.stage),
+                            "effective_route": ("human_review"),
+                            "forced_human_review": True,
+                            "reason_codes": [
+                                "guardrail_failure",
+                            ],
+                            "error_type": (exc.error_type),
+                        }
+
+                        if (
+                            self._is_real_aws_second_review_provider(provider)
+                            and self._settings.aws_bedrock_guardrails_enabled
+                        ):
+                            outcome["aws_boundary_failure"] = True
+                            outcome["aws_boundary_component"] = "bedrock_guardrails"
+
+                    except Exception as exc:
+                        outcome = {
+                            "status": "failed",
+                            "provider": (provider.provider_name),
+                            "model": (provider.model_name),
+                            "effective_route": ("human_review"),
+                            "forced_human_review": True,
+                            "reason_codes": [
+                                "provider_failure",
+                            ],
+                            "error_type": (type(exc).__name__),
+                        }
+
+                        if self._is_real_aws_second_review_provider(provider):
+                            outcome["aws_boundary_failure"] = True
+                            outcome["aws_boundary_component"] = "bedrock_review"
 
         alert_event = self._second_review_alert_event(
             state=state,
@@ -592,7 +763,7 @@ class InvestigationWorkflow:
         await self._investigations.save(self._run)
 
         return {
-            "current_step": "second_review",
+            "current_step": ("second_review"),
             "second_review": outcome,
         }
 
@@ -619,11 +790,17 @@ class InvestigationWorkflow:
             [],
         )
 
-        reason_codes: tuple[str, ...] = ()
+        reason_codes: tuple[
+            str,
+            ...,
+        ] = ()
 
         if isinstance(
             raw_reason_codes,
-            (list, tuple),
+            (
+                list,
+                tuple,
+            ),
         ):
             reason_codes = tuple(
                 value.strip()
@@ -656,19 +833,39 @@ class InvestigationWorkflow:
                 source="second_review",
                 case_id=state["case_id"],
                 investigation_run_id=(self._run.id),
-                reason_codes=reason_codes,
+                reason_codes=(reason_codes),
                 risk_level=risk_level,
                 status=status,
             )
 
         if status == "guardrail_blocked":
             return AlertEvent(
-                event_type="GUARDRAIL_BLOCK",
+                event_type=("GUARDRAIL_BLOCK"),
                 severity="critical",
                 source="guardrail",
                 case_id=state["case_id"],
                 investigation_run_id=(self._run.id),
-                reason_codes=reason_codes,
+                reason_codes=(reason_codes),
+                status=status,
+            )
+
+        if outcome.get("aws_boundary_failure") is True and status in {
+            "failed",
+            "guardrail_failed",
+        }:
+            boundary_reason_codes = ["aws_boundary_failure"]
+
+            for reason_code in reason_codes:
+                if reason_code not in boundary_reason_codes:
+                    boundary_reason_codes.append(reason_code)
+
+            return AlertEvent(
+                event_type=("CROSS_CLOUD_FAILURE"),
+                severity="high",
+                source="aws_boundary",
+                case_id=state["case_id"],
+                investigation_run_id=(self._run.id),
+                reason_codes=tuple(boundary_reason_codes),
                 status=status,
             )
 

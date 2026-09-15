@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 import pytest
 
 from casemesh.core.config import Settings
@@ -153,48 +151,103 @@ def test_human_alerts_sns_uses_ai_region() -> None:
 
 
 def test_boto3_import_is_lazy(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch,
 ) -> None:
-    import_calls: list[str] = []
+    import casemesh.integrations.aws.clients as clients_module
 
-    def fake_import(name: str) -> object:
-        import_calls.append(name)
+    imports: list[str] = []
+    created_clients: list[dict[str, object]] = []
 
-        def fake_client(
+    class FakeConfig:
+        def __init__(
+            self,
+            **kwargs: object,
+        ) -> None:
+            self.kwargs = kwargs
+
+    class FakeBoto3:
+        @staticmethod
+        def client(
             service_name: str,
-            *,
-            region_name: str,
+            **kwargs: object,
         ) -> object:
-            return {
+            record = {
                 "service_name": service_name,
-                "region_name": region_name,
+                **kwargs,
             }
 
-        return SimpleNamespace(client=fake_client)
+            created_clients.append(record)
+
+            return object()
+
+    class FakeBotocoreConfigModule:
+        Config = FakeConfig
+
+    def fake_import_module(
+        name: str,
+    ) -> object:
+        imports.append(name)
+
+        if name == "boto3":
+            return FakeBoto3()
+
+        if name == "botocore.config":
+            return FakeBotocoreConfigModule()
+
+        raise AssertionError(f"Unexpected module import: {name}")
 
     monkeypatch.setattr(
-        "casemesh.integrations.aws.clients.import_module",
-        fake_import,
+        clients_module,
+        "import_module",
+        fake_import_module,
     )
 
-    factory = Boto3AWSClientFactory()
+    factory = clients_module.Boto3AWSClientFactory(
+        request_timeout_seconds=7.5,
+    )
 
-    assert import_calls == []
+    assert imports == []
 
     first = factory.create_client(
-        service_name="bedrock-runtime",
+        service_name="sns",
         region_name="me-central-1",
     )
 
-    assert import_calls == ["boto3"]
-
     second = factory.create_client(
-        service_name="bedrock-runtime",
+        service_name="sns",
         region_name="me-central-1",
     )
 
     assert first is second
-    assert import_calls == ["boto3"]
+
+    assert imports == [
+        "boto3",
+        "botocore.config",
+    ]
+
+    assert len(created_clients) == 1
+
+    created = created_clients[0]
+
+    assert created["service_name"] == "sns"
+
+    assert created["region_name"] == "me-central-1"
+
+    config = created["config"]
+
+    assert isinstance(
+        config,
+        FakeConfig,
+    )
+
+    assert config.kwargs == {
+        "connect_timeout": 7.5,
+        "read_timeout": 7.5,
+        "retries": {
+            "mode": "standard",
+            "total_max_attempts": 1,
+        },
+    }
 
 
 def test_boto3_dependency_error_is_deferred_until_client_request(
@@ -222,3 +275,122 @@ def test_boto3_dependency_error_is_deferred_until_client_request(
             service_name="bedrock-runtime",
             region_name="me-central-1",
         )
+
+
+def test_boto3_factory_rejects_non_positive_transport_timeout() -> None:
+    import pytest
+
+    from casemesh.integrations.aws.clients import (
+        Boto3AWSClientFactory,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="request_timeout_seconds",
+    ):
+        Boto3AWSClientFactory(
+            request_timeout_seconds=0,
+        )
+
+
+def test_sdk_gateway_factory_propagates_configured_timeout(
+    monkeypatch,
+) -> None:
+    import casemesh.integrations.aws.factory as factory_module
+    from casemesh.core.config import Settings
+
+    observed: list[float] = []
+
+    class RecordingFactory:
+        def __init__(
+            self,
+            *,
+            request_timeout_seconds: float,
+        ) -> None:
+            observed.append(request_timeout_seconds)
+
+        def create_client(
+            self,
+            *,
+            service_name: str,
+            region_name: str,
+        ) -> object:
+            del service_name
+            del region_name
+
+            raise AssertionError("No AWS client should be requested during gateway construction.")
+
+    monkeypatch.setattr(
+        factory_module,
+        "Boto3AWSClientFactory",
+        RecordingFactory,
+    )
+
+    settings = Settings(
+        _env_file=None,
+        aws_intelligence_enabled=True,
+        aws_client_mode="sdk",
+        aws_request_timeout_seconds=9.25,
+    )
+
+    gateway = factory_module.build_aws_intelligence_gateway(settings)
+
+    assert gateway is not None
+
+    assert observed == [
+        9.25,
+    ]
+
+
+def test_direct_gateway_fallback_propagates_configured_timeout(
+    monkeypatch,
+) -> None:
+    import casemesh.integrations.aws.gateway as gateway_module
+    from casemesh.core.config import Settings
+
+    observed: list[float] = []
+
+    class RecordingFactory:
+        def __init__(
+            self,
+            *,
+            request_timeout_seconds: float,
+        ) -> None:
+            observed.append(request_timeout_seconds)
+
+        def create_client(
+            self,
+            *,
+            service_name: str,
+            region_name: str,
+        ) -> object:
+            del service_name
+            del region_name
+
+            return object()
+
+    monkeypatch.setattr(
+        gateway_module,
+        "Boto3AWSClientFactory",
+        RecordingFactory,
+    )
+
+    settings = Settings(
+        _env_file=None,
+        aws_intelligence_enabled=True,
+        aws_client_mode="sdk",
+        aws_request_timeout_seconds=6.5,
+    )
+
+    gateway = gateway_module.AWSIntelligenceGateway(settings)
+
+    factory = gateway._clients()
+
+    assert isinstance(
+        factory,
+        RecordingFactory,
+    )
+
+    assert observed == [
+        6.5,
+    ]

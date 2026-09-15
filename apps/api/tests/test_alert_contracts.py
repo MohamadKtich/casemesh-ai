@@ -99,3 +99,49 @@ def test_planned_high_risk_case_event_exists_only_as_contract() -> None:
     )
 
     assert event.event_type == ("HIGH_RISK_CASE")
+
+
+def test_alert_deduplication_key_is_deterministic() -> None:
+    first = AlertEvent(
+        event_type="APPROVAL_REQUIRED",
+        severity="high",
+        source="action",
+        reason_codes=("HIGH_RISK_ACTION",),
+        risk_level="high",
+        status="awaiting_approval",
+    )
+
+    equivalent = AlertEvent(
+        event_type="APPROVAL_REQUIRED",
+        severity="high",
+        source="action",
+        reason_codes=("HIGH_RISK_ACTION",),
+        risk_level="high",
+        status="awaiting_approval",
+    )
+
+    changed = AlertEvent(
+        event_type="APPROVAL_REQUIRED",
+        severity="critical",
+        source="action",
+        reason_codes=("HIGH_RISK_ACTION",),
+        risk_level="critical",
+        status="awaiting_approval",
+    )
+
+    first_key = first.deduplication_key()
+
+    assert first_key == (equivalent.deduplication_key())
+
+    assert first_key != (changed.deduplication_key())
+
+    assert len(first_key) == 64
+
+    int(
+        first_key,
+        16,
+    )
+
+    assert "HIGH_RISK_ACTION" not in first_key
+
+    assert "awaiting_approval" not in first_key

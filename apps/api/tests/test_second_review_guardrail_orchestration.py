@@ -299,7 +299,7 @@ async def test_input_block_prevents_reviewer_and_decision_gate(
         "PROMPT_INJECTION_SIGNAL",
     ]
 
-    assert repository.saved == 1
+    assert repository.saved == 2
     assert run.current_step == "second_review"
 
 
@@ -370,7 +370,7 @@ async def test_output_block_prevents_decision_gate(
         "GUARDRAIL_INTERVENED",
     ]
 
-    assert repository.saved == 1
+    assert repository.saved == 2
 
 
 @pytest.mark.asyncio
@@ -417,7 +417,7 @@ async def test_input_guardrail_failure_fails_closed_without_review() -> None:
 
     assert outcome["error_type"] == "RuntimeError"
 
-    assert repository.saved == 1
+    assert repository.saved == 2
 
 
 @pytest.mark.asyncio
@@ -468,7 +468,7 @@ async def test_output_guardrail_failure_fails_closed_after_review() -> None:
 
     assert outcome["error_type"] == "RuntimeError"
 
-    assert repository.saved == 1
+    assert repository.saved == 2
 
 
 @pytest.mark.asyncio
@@ -516,7 +516,7 @@ async def test_allowed_guardrails_reach_decision_gate() -> None:
 
     assert outcome["forced_human_review"] is False
 
-    assert repository.saved == 1
+    assert repository.saved == 2
 
 
 def test_disabled_guardrails_preserve_plain_reviewer() -> None:

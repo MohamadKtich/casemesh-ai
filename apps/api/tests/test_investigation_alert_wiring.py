@@ -303,7 +303,7 @@ async def test_disagreement_emits_second_review_disagreement_alert() -> None:
 
     assert run.metadata_json["second_review"] == outcome
 
-    assert repository.saved == 1
+    assert repository.saved == 2
 
 
 @pytest.mark.asyncio
@@ -478,7 +478,7 @@ async def test_alert_transport_failure_does_not_fail_second_review() -> None:
 
     assert run.metadata_json["second_review"] == outcome
 
-    assert repository.saved == 1
+    assert repository.saved == 2
 
 
 @pytest.mark.asyncio

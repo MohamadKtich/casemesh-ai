@@ -20,7 +20,9 @@ def build_aws_intelligence_gateway(
         if settings.aws_client_mode == "mock":
             selected_factory = MockAWSClientFactory()
         else:
-            selected_factory = Boto3AWSClientFactory()
+            selected_factory = Boto3AWSClientFactory(
+                request_timeout_seconds=(settings.aws_request_timeout_seconds),
+            )
 
     return AWSIntelligenceGateway(
         settings,

@@ -262,3 +262,91 @@ def test_sdk_factory_routes_sns_through_ai_region_without_boto3() -> None:
     ]
 
     assert "boto3" not in sys.modules
+
+
+@pytest.mark.asyncio
+async def test_standard_topic_does_not_send_fifo_fields() -> None:
+    client = FakeSNSClient()
+
+    publisher = SNSAlertPublisher(
+        client=client,
+        topic_arn=TOPIC_ARN,
+        timeout_seconds=1.0,
+    )
+
+    await publisher.publish(_event())
+
+    assert len(client.calls) == 1
+
+    call = client.calls[0]
+
+    assert "MessageGroupId" not in call
+
+    assert "MessageDeduplicationId" not in call
+
+
+@pytest.mark.asyncio
+async def test_fifo_topic_uses_deterministic_deduplication() -> None:
+    client = FakeSNSClient()
+
+    fifo_topic_arn = f"{TOPIC_ARN}.fifo"
+
+    publisher = SNSAlertPublisher(
+        client=client,
+        topic_arn=fifo_topic_arn,
+        timeout_seconds=1.0,
+    )
+
+    event = _event()
+
+    await publisher.publish(event)
+
+    await publisher.publish(event)
+
+    changed = AlertEvent(
+        event_type=("SECOND_REVIEW_DISAGREEMENT"),
+        severity="critical",
+        source="second_review",
+        case_id=CASE_ID,
+        investigation_run_id=RUN_ID,
+        reason_codes=("review_disagreed",),
+        risk_level="critical",
+        status="completed",
+    )
+
+    await publisher.publish(changed)
+
+    assert len(client.calls) == 3
+
+    first = client.calls[0]
+    second = client.calls[1]
+    third = client.calls[2]
+
+    assert first["TopicArn"] == fifo_topic_arn
+
+    assert first["MessageDeduplicationId"] == event.deduplication_key()
+
+    assert second["MessageDeduplicationId"] == event.deduplication_key()
+
+    assert first["MessageDeduplicationId"] == second["MessageDeduplicationId"]
+
+    assert third["MessageDeduplicationId"] == changed.deduplication_key()
+
+    assert third["MessageDeduplicationId"] != first["MessageDeduplicationId"]
+
+    assert first["MessageGroupId"] == second["MessageGroupId"]
+
+    # Different alert content for the same case
+    # stays in the same FIFO ordering group.
+    assert third["MessageGroupId"] == first["MessageGroupId"]
+
+    group_id = first["MessageGroupId"]
+
+    assert isinstance(
+        group_id,
+        str,
+    )
+
+    assert group_id.startswith("casemesh-")
+
+    assert len(group_id) <= 128

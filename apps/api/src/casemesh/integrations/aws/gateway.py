@@ -169,7 +169,9 @@ class AWSIntelligenceGateway:
 
     def _clients(self) -> AWSClientFactory:
         if self._client_factory is None:
-            self._client_factory = Boto3AWSClientFactory()
+            self._client_factory = Boto3AWSClientFactory(
+                request_timeout_seconds=(self._settings.aws_request_timeout_seconds),
+            )
 
         return self._client_factory
 

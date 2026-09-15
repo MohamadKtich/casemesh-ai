@@ -59,13 +59,7 @@ class MockSNSAlertPublisher:
     ) -> AlertPublishResult:
         self._events.append(event)
 
-        serialized = json.dumps(
-            event.payload(),
-            separators=(",", ":"),
-            sort_keys=True,
-        )
-
-        digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+        digest = event.deduplication_key()
 
         return AlertPublishResult(
             provider=self.provider_name,
@@ -126,15 +120,27 @@ class SNSAlertPublisher:
 
         subject = f"[CaseMesh] {event.event_type}"
 
+        publish_kwargs: dict[
+            str,
+            object,
+        ] = {
+            "TopicArn": self._topic_arn,
+            "Subject": subject,
+            "Message": message,
+        }
+
+        if self._topic_arn.endswith(".fifo"):
+            publish_kwargs["MessageGroupId"] = self._fifo_message_group_id(event)
+
+            publish_kwargs["MessageDeduplicationId"] = event.deduplication_key()
+
         try:
             raw_response = await asyncio.wait_for(
                 asyncio.to_thread(
                     self._client.publish,
-                    TopicArn=self._topic_arn,
-                    Subject=subject,
-                    Message=message,
+                    **publish_kwargs,
                 ),
-                timeout=self._timeout_seconds,
+                timeout=(self._timeout_seconds),
             )
         except TimeoutError as exc:
             raise SNSAlertTimeoutError("AWS SNS alert publish timed out.") from exc
@@ -156,8 +162,29 @@ class SNSAlertPublisher:
             provider=self.provider_name,
             event_type=event.event_type,
             delivery_status="published",
-            message_id=raw_message_id.strip(),
+            message_id=(raw_message_id.strip()),
         )
+
+    @staticmethod
+    def _fifo_message_group_id(
+        event: AlertEvent,
+    ) -> str:
+        """Build a deterministic non-content FIFO ordering group."""
+        if event.case_id is not None:
+            identity = f"case:{event.case_id}"
+
+        elif event.investigation_run_id is not None:
+            identity = f"investigation:{event.investigation_run_id}"
+
+        elif event.action_request_id is not None:
+            identity = f"action:{event.action_request_id}"
+
+        else:
+            identity = f"source:{event.source}"
+
+        digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+
+        return f"casemesh-{digest[:32]}"
 
     async def health(
         self,

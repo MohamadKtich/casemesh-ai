@@ -1,3 +1,5 @@
+import hashlib
+import json
 from dataclasses import dataclass
 from typing import Literal, Protocol
 from uuid import UUID
@@ -78,6 +80,16 @@ class AlertEvent:
                 field_name,
                 normalized or None,
             )
+
+    def deduplication_key(self) -> str:
+        """Return a deterministic hash of safe alert metadata only."""
+        serialized = json.dumps(
+            self.payload(),
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+
+        return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
     def payload(self) -> dict[str, object]:
         """Return the intentionally minimal serialization surface."""

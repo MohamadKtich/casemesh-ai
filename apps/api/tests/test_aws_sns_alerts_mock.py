@@ -108,3 +108,22 @@ async def test_mock_health_never_claims_network_check() -> None:
     assert health["network_checked"] is False
 
     assert health["delivery_mode"] == "mock"
+
+
+@pytest.mark.asyncio
+async def test_mock_message_id_uses_alert_deduplication_key() -> None:
+    publisher = MockSNSAlertPublisher(
+        topic_arn=("arn:aws:sns:me-central-1:123456789012:casemesh-alerts")
+    )
+
+    event = AlertEvent(
+        event_type="GUARDRAIL_BLOCK",
+        severity="critical",
+        source="guardrail",
+        case_id=CASE_ID,
+        reason_codes=("guardrail_blocked",),
+    )
+
+    result = await publisher.publish(event)
+
+    assert result.message_id == (f"mock-{event.deduplication_key()[:24]}")
