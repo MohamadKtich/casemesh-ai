@@ -107,3 +107,32 @@ jobs:
           esac
 
           echo "AWS GitHub OIDC identity validation passed."
+
+      - name: Validate Bedrock catalog access
+        shell: bash
+        env:
+          CASEMESH_AWS_REGION: ${{ vars.AWS_AI_REGION }}
+        run: |
+          set -euo pipefail
+
+          model_count="$(
+            aws bedrock list-foundation-models \
+              --region "${CASEMESH_AWS_REGION}" \
+              --query 'length(modelSummaries)' \
+              --output text \
+              --no-cli-pager \
+              --cli-connect-timeout 5 \
+              --cli-read-timeout 15
+          )"
+
+          if ! printf '%s' "${model_count}" | grep -Eq '^[0-9]+$'; then
+            echo "Bedrock model count must be a non-negative integer."
+            exit 1
+          fi
+
+          if [ "${model_count}" -lt 1 ]; then
+            echo "Bedrock catalog returned no foundation models."
+            exit 1
+          fi
+
+          echo "AWS Bedrock catalog validation passed with ${model_count} foundation models."
