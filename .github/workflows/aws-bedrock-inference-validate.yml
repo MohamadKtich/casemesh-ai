@@ -1,3 +1,4 @@
+# CaseMesh Bedrock inference validation workflow.
 name: CaseMesh AWS Bedrock Inference Validate
 
 on:
