@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class InvestigationStartRequest(BaseModel):
     objective: str = Field(min_length=5, max_length=2000)
+    manual_second_review_requested: bool = False
 
 
 class InvestigationEvidenceRef(BaseModel):
@@ -37,6 +38,32 @@ class InvestigationPlanStep(BaseModel):
     title: str
 
 
+class InvestigationRiskTriggerSummary(BaseModel):
+    second_review_requested: bool
+    reason_codes: list[str] = Field(default_factory=list)
+
+
+class InvestigationSecondReviewSummary(BaseModel):
+    status: (
+        Literal[
+            "completed",
+            "unavailable",
+            "failed",
+            "budget_exhausted",
+            "guardrail_blocked",
+            "guardrail_failed",
+        ]
+        | None
+    ) = None
+    agreement: Literal["agree", "disagree", "uncertain"] | None = None
+    risk_level: Literal["low", "medium", "high", "critical"] | None = None
+    provider_route: Literal["continue", "human_review"] | None = None
+    effective_route: Literal["continue", "human_review"] | None = None
+    forced_human_review: bool = False
+    reason_codes: list[str] = Field(default_factory=list)
+    guardrail_decision: Literal["blocked", "failed"] | None = None
+
+
 class InvestigationRunResponse(BaseModel):
     workflow_id: UUID
     case_id: UUID
@@ -53,6 +80,8 @@ class InvestigationRunResponse(BaseModel):
     evidence: list[InvestigationEvidenceRef]
     gaps: list[InvestigationGap]
     citations: list[InvestigationCitation]
+    risk_triggers: InvestigationRiskTriggerSummary | None = None
+    second_review: InvestigationSecondReviewSummary | None = None
     error_message: str | None
     started_at: datetime | None
     completed_at: datetime | None

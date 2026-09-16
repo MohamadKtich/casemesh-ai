@@ -8,6 +8,24 @@ from casemesh.core.config import Settings, get_settings
 from casemesh.db.session import get_db_session
 from casemesh.embeddings.factory import get_embedding_provider
 from casemesh.grounding.context import EvidenceContextBuilder
+from casemesh.integrations.aws import (
+    build_aws_intelligence_gateway,
+)
+from casemesh.integrations.aws.bedrock_guardrails import (
+    build_bedrock_safety_guardrail_provider,
+)
+from casemesh.integrations.aws.bedrock_review import (
+    build_bedrock_second_review_provider,
+)
+from casemesh.integrations.aws.sns_alerts import (
+    build_aws_alert_dispatcher,
+)
+from casemesh.intelligence.contracts import (
+    SecondReviewProvider,
+)
+from casemesh.intelligence.guarded_review import (
+    GuardedSecondReviewProvider,
+)
 from casemesh.llm.factory import get_generation_provider
 from casemesh.mcp.client import CaseMeshMcpClient
 from casemesh.repositories.cases import CaseRepository
@@ -42,17 +60,12 @@ def _build_mcp_client(
     settings: Settings,
 ) -> CaseMeshMcpClient:
     if not settings.mcp_auth_token.strip():
-        raise RuntimeError(
-            "INVESTIGATION_USE_MCP is enabled but "
-            "MCP_AUTH_TOKEN is not configured."
-        )
+        raise RuntimeError("INVESTIGATION_USE_MCP is enabled but MCP_AUTH_TOKEN is not configured.")
 
     return CaseMeshMcpClient(
         url=settings.mcp_client_url,
         token=settings.mcp_auth_token,
-        timeout_seconds=(
-            settings.mcp_client_timeout_seconds
-        ),
+        timeout_seconds=(settings.mcp_client_timeout_seconds),
     )
 
 
@@ -89,13 +102,39 @@ def build_retrieval_searcher(
 
     return RetrievalService(
         case_repository=CaseRepository(session),
-        document_repository=DocumentRepository(
-            session
-        ),
-        retrieval_repository=RetrievalRepository(
-            session
-        ),
+        document_repository=DocumentRepository(session),
+        retrieval_repository=RetrievalRepository(session),
         embedding_provider=get_embedding_provider(),
+    )
+
+
+def build_second_review_provider(
+    *,
+    settings: Settings,
+) -> SecondReviewProvider | None:
+    """Build optional second review with independent safety guardrails."""
+
+    if not settings.aws_bedrock_review_enabled:
+        return None
+
+    gateway = build_aws_intelligence_gateway(settings)
+
+    reviewer = build_bedrock_second_review_provider(
+        settings=settings,
+        gateway=gateway,
+    )
+
+    if not settings.aws_bedrock_guardrails_enabled:
+        return reviewer
+
+    guardrail = build_bedrock_safety_guardrail_provider(
+        settings=settings,
+        gateway=gateway,
+    )
+
+    return GuardedSecondReviewProvider(
+        reviewer=reviewer,
+        guardrail=guardrail,
     )
 
 
@@ -116,23 +155,23 @@ def get_investigation_service(
         retrieval_service=retrieval_searcher,
         generation_provider=get_generation_provider(),
         context_builder=EvidenceContextBuilder(
-            max_context_chars=(
-                settings.answer_context_max_chars
-            ),
-            max_source_chars=(
-                settings.answer_source_max_chars
-            ),
+            max_context_chars=(settings.answer_context_max_chars),
+            max_source_chars=(settings.answer_source_max_chars),
         ),
     )
 
     return InvestigationService(
         settings=settings,
         case_reader=case_reader,
-        investigation_repository=InvestigationRepository(
-            session
-        ),
+        investigation_repository=InvestigationRepository(session),
         retrieval_service=retrieval_searcher,
         answer_service=answer_service,
+        second_review_provider=(
+            build_second_review_provider(
+                settings=settings,
+            )
+        ),
+        alert_dispatcher=build_aws_alert_dispatcher(settings=settings),
     )
 
 
@@ -156,6 +195,7 @@ async def start_investigation(
     return await service.start(
         case_id=case_id,
         objective=payload.objective,
+        manual_second_review_requested=(payload.manual_second_review_requested),
     )
 
 
@@ -168,9 +208,7 @@ async def list_investigations(
     case_id: UUID,
     service: InvestigationServiceDep,
 ) -> list[InvestigationRunResponse]:
-    return await service.list(
-        case_id=case_id
-    )
+    return await service.list(case_id=case_id)
 
 
 @router.get(
