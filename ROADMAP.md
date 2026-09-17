@@ -2,7 +2,7 @@
 
 ## Roadmap status
 
-CaseMesh AI has moved beyond the original repository-foundation phase.
+CaseMesh AI has moved beyond the original repository-foundation phase and now has a validated multi-cloud engineering baseline.
 
 The current project state includes:
 
@@ -24,9 +24,15 @@ The current project state includes:
 - GitHub OIDC federation with Azure,
 - GHCR immutable image publishing,
 - deployment verification and API rollback,
-- GitHub Actions supply-chain hardening.
+- GitHub Actions supply-chain hardening,
+- AWS Intelligence v1.1 integration,
+- GitHub OIDC federation with AWS,
+- bounded real Bedrock inference validation,
+- real CaseMesh Bedrock second-review validation,
+- offline AWS fail-safe regression,
+- final full regression across API, Web, Platform, Docker, and Bicep.
 
-The remaining roadmap focuses on deeper evaluation, observability, optional multi-cloud validation, additional security hardening, and portfolio release polish.
+The remaining roadmap focuses on deeper evaluation, observability, FinOps, additional security automation, and final portfolio-release polish.
 
 Status legend:
 
@@ -153,7 +159,9 @@ Completed core control model:
 - controlled action execution,
 - execution switches and modes,
 - live-action allowlisting,
-- authorization boundaries around sensitive operations.
+- authorization boundaries around sensitive operations,
+- PolicyGuard authority outside model output,
+- human approval routing for high-risk and financial actions.
 
 Additional product-facing approval UX can continue to evolve.
 
@@ -178,6 +186,9 @@ Current state:
 - retrieval and workflow tests,
 - MCP tests,
 - deterministic behavior checks,
+- second-review and policy-safety tests,
+- cross-cloud failure-isolation tests,
+- final full-regression workflow,
 - CI quality gates.
 
 Still planned:
@@ -219,16 +230,33 @@ Completed real Azure integration:
 
 Current Azure usage is intentionally development/portfolio oriented rather than an always-on production environment.
 
-## M14 — AWS Validation ⬜
+## M14 — AWS Validation ✅
 
-Planned optional validation:
+Completed AWS Intelligence v1.1 validation:
 
-- Amazon Bedrock provider integration or targeted proof-of-concept,
-- IAM-based authentication,
-- cost-controlled validation,
-- optional safety/guardrail comparison.
+- AWS client and gateway abstraction,
+- temporary S3 staging and lifecycle logic,
+- Textract document-intelligence adapters,
+- SQS asynchronous completion path,
+- Bedrock second-review provider,
+- Bedrock Guardrails integration,
+- risk-trigger routing,
+- SNS escalation alerts,
+- request timeouts and bounded review budgets,
+- idempotency and replay behavior,
+- cross-cloud failure isolation,
+- safe API/UI summary behavior,
+- federated identity support and refresh testing,
+- GitHub OIDC federation with AWS IAM,
+- Bedrock catalog validation,
+- bounded real Bedrock inference,
+- real CaseMesh second-review application-path validation,
+- offline fail-safe regression,
+- final full regression after integration.
 
-AWS is not required for the current CaseMesh runtime.
+AWS remains optional for normal development and is not required for the core CaseMesh runtime.
+
+See `docs/AWS_INTELLIGENCE_V1_1.md` for the validation record.
 
 ## M15 — Optional GCP Validation ⬜
 
@@ -248,6 +276,8 @@ Partially complete:
 - deployment logs,
 - health and readiness checks,
 - CI/CD execution history,
+- bounded AWS model validation,
+- second-review budget controls,
 - explicit zero-cost-first architecture decisions.
 
 Still planned:
@@ -255,10 +285,10 @@ Still planned:
 - OpenTelemetry instrumentation,
 - end-to-end tracing,
 - provider latency metrics,
-- token-usage tracking,
+- token-usage aggregation,
 - estimated AI cost tracking,
 - Azure monitoring integration where useful,
-- budget and cost guardrails.
+- broader budget/cost dashboards.
 
 ## M17 — Infrastructure as Code ✅
 
@@ -290,14 +320,24 @@ Completed CD:
 - CaseMesh API Deploy Dev,
 - CaseMesh Web Deploy Dev.
 
+Completed manual validation gates:
+
+- CaseMesh AWS OIDC Validate,
+- CaseMesh AWS Bedrock Catalog Validate,
+- CaseMesh AWS Bedrock Inference Validate,
+- CaseMesh AWS Application Path Validate,
+- CaseMesh AWS Safety Validate,
+- CaseMesh Final Full Regression.
+
 Current deployment protections include:
 
 - manual workflow dispatch,
 - `main` branch requirement,
-- explicit `DEPLOY` confirmation,
+- explicit confirmation values,
 - immutable API image tags,
 - GHCR publishing,
 - Azure OIDC,
+- AWS OIDC for validation,
 - exact Azure Container Apps revision verification,
 - API readiness verification,
 - API rollback on failed deployment verification,
@@ -318,14 +358,19 @@ Completed controls include:
 - explicit CORS configuration,
 - authenticated MCP access,
 - controlled action execution,
+- PolicyGuard authority outside AI output,
 - least-privilege GitHub Actions permissions,
 - GitHub Actions pinned to immutable commit SHAs,
 - `persist-credentials: false`,
 - Azure OIDC instead of a stored Azure client secret,
-- manual deployment confirmation,
+- AWS OIDC instead of static AWS access keys for validation,
+- manual deployment and validation confirmation,
 - immutable API image references,
 - post-deployment verification,
-- API rollback.
+- API rollback,
+- provider/guardrail failure fail-closed behavior,
+- cross-cloud alert-failure isolation,
+- safe metadata exposure controls.
 
 Still planned or expandable:
 
@@ -337,24 +382,28 @@ Still planned or expandable:
 - production-grade monitoring and incident procedures,
 - additional security testing around file ingestion and action execution.
 
-## M20 — Portfolio Release ⬜
+## M20 — Portfolio Release 🟡
 
-Planned final release work:
+Completed release-preparation work:
 
-- final README polish,
+- core README reflects the validated architecture,
+- architecture documentation includes AWS Intelligence v1.1,
+- AWS validation record documented,
+- final full-regression workflow validated.
+
+Still planned:
+
 - architecture diagrams updated to the final implementation,
 - selected screenshots,
-- deployment screenshots,
+- deployment and validation screenshots,
 - evaluation results,
-- cost and zero-cost-first summary,
+- concise cost/zero-cost-first summary,
 - concise demo flow,
 - optional demo video or GIF,
 - polished GitHub repository presentation,
 - final release tag.
 
 ## Current delivery baseline
-
-The current validated delivery path is:
 
 ```text
 Source change
@@ -382,6 +431,13 @@ Manual deployment decision
             +--> production Vite build
             +--> Azure Static Web Apps
             +--> production HTTP verification
+
+Optional/manual AWS validation
+    |
+    +--> GitHub OIDC -> AWS
+    +--> Bedrock catalog/inference
+    +--> real CaseMesh second-review path
+    +--> offline safety regression
 ```
 
 ## Current priorities
@@ -391,8 +447,8 @@ The next highest-value milestones are:
 1. complete formal evaluation and benchmark reporting,
 2. expand observability and FinOps,
 3. finish remaining security-hardening items,
-4. decide whether AWS and GCP validation add enough value to justify the work,
-5. prepare the final portfolio release.
+4. prepare architecture diagrams and portfolio media,
+5. create the final portfolio release/tag.
 
 ## Portfolio release principle
 
@@ -407,7 +463,8 @@ The final portfolio release should demonstrate:
 - backend development,
 - frontend integration,
 - authentication,
-- cloud deployment,
+- Azure deployment,
+- AWS cross-cloud intelligence validation,
 - Infrastructure as Code,
 - containerization,
 - CI/CD,
