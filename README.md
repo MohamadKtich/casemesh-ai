@@ -1,65 +1,74 @@
 # CaseMesh AI
 
-> **Status:** Active development. Core application, MCP integration, Azure dev deployment, and hardened CI/CD pipelines are operational.
+> **Status:** Core platform operational. Azure dev deployment, hardened CI/CD, MCP integration, and AWS Intelligence v1.1 validation are complete.
 
-CaseMesh AI is a full-stack, agentic AI case investigation and resolution platform designed for evidence-grounded reasoning, controlled automation, and auditable business actions.
+CaseMesh AI is a full-stack, agentic AI case investigation and resolution platform designed for evidence-grounded reasoning, controlled automation, human approval, and auditable business actions.
 
-The project combines hybrid retrieval, structured AI orchestration, deterministic tools, human approval, MCP-based integrations, authentication, cloud deployment, and production-oriented delivery practices while following a local-first and zero-cost-first engineering strategy.
+The project combines hybrid retrieval, structured investigation workflows, deterministic tools, MCP integrations, Microsoft Entra authentication, Azure deployment, and a bounded AWS intelligence layer while following a local-first and zero-cost-first engineering strategy.
 
 ## What CaseMesh AI does
 
-A user can create and investigate a case through a workflow that can:
+A CaseMesh investigation can:
 
 1. ingest and validate evidence,
-2. retrieve relevant knowledge using semantic and lexical search,
-3. generate evidence-grounded findings,
-4. orchestrate specialized investigation steps,
-5. use deterministic tools for structured operations,
-6. produce a resolution recommendation,
-7. protect sensitive actions behind explicit authorization,
-8. expose approved business capabilities through MCP,
-9. authenticate users through Microsoft Entra ID,
-10. record operational state for audit and troubleshooting.
+2. retrieve relevant knowledge through semantic and lexical search,
+3. generate evidence-grounded findings with citations,
+4. orchestrate structured investigation steps,
+5. use deterministic tools where code is more reliable than generation,
+6. request an independent second review,
+7. identify risk and uncertainty,
+8. route sensitive cases to human review,
+9. protect write-side actions behind deterministic policy and approval,
+10. expose approved capabilities through MCP,
+11. record operational state for audit and troubleshooting.
 
 ## Engineering principles
 
-- **Local-first:** core development can run locally without permanent cloud infrastructure.
-- **Zero-cost-first:** cloud resources are used only when they provide concrete validation or portfolio value.
-- **Evidence-grounded AI:** retrieval and citations are preferred over unsupported generation.
-- **Deterministic where possible:** calculations and structured transformations belong in code.
-- **Controlled agentic behavior:** AI does not receive unrestricted write access.
-- **Human and policy controls:** high-impact actions require explicit authorization.
-- **Provider abstraction:** AI providers remain replaceable behind application-level interfaces.
-- **Defense in depth:** repository, workflow, identity, container, API, and cloud controls are layered.
-- **Observable delivery:** CI, deployment verification, health checks, and rollback behavior are explicit.
+- **Evidence-grounded AI:** retrieved evidence and citations are preferred over unsupported generation.
+- **Controlled agentic behavior:** models do not receive unrestricted write access.
+- **Deterministic where possible:** calculations, validation, authorization, and state transitions stay in code.
+- **Policy authority outside the model:** AI review cannot override `PolicyGuard` or approval requirements.
+- **Provider abstraction:** model and cloud integrations remain replaceable behind application interfaces.
+- **Local-first:** normal development does not require permanent cloud infrastructure.
+- **Zero-cost-first:** real cloud calls are targeted, bounded, and manually triggered when they add engineering evidence.
+- **Defense in depth:** repository, CI/CD, identity, container, API, MCP, and cloud controls are layered.
+- **Observable delivery:** CI, deployment verification, readiness checks, rollback behavior, and validation workflows are explicit.
 
-## Current architecture
+## Architecture
 
 ```text
-Browser
-  |
-  v
+User Browser
+    |
+    v
 Azure Static Web Apps
 React + Vite + TypeScript
-  |
-  | Microsoft Entra authentication
-  v
+    |
+    | Microsoft Entra ID
+    v
 Azure Container Apps
 FastAPI / Python 3.12
-  |
-  +--> Case management
-  +--> Evidence processing
-  +--> Hybrid retrieval
-  +--> Agentic investigation workflows
-  +--> Deterministic tools
-  +--> MCP server and client
-  +--> Controlled business actions
-  |
-  v
+    |
+    +--> Case management
+    +--> Evidence processing
+    +--> Hybrid retrieval
+    +--> Agentic investigation workflow
+    +--> Deterministic tools
+    +--> MCP integration
+    +--> PolicyGuard + approval controls
+    |
+    +--> Optional AWS Intelligence v1.1
+    |       +--> S3 temporary staging
+    |       +--> Textract document intelligence
+    |       +--> SQS async completion
+    |       +--> Bedrock second review
+    |       +--> Bedrock Guardrails
+    |       +--> SNS escalation alerts
+    |
+    v
 PostgreSQL + pgvector
 ```
 
-The API is deployed independently from the frontend. This keeps runtime, release, and rollback concerns separated.
+Azure is the current hosting environment. AWS is an opt-in specialized intelligence extension, not a replacement for the core application authority model.
 
 ## Technology stack
 
@@ -86,97 +95,126 @@ The API is deployed independently from the frontend. This keeps runtime, release
 ### AI and orchestration
 
 - retrieval-augmented generation
-- semantic and lexical retrieval
+- semantic + lexical retrieval
 - structured investigation workflows
 - deterministic tools
-- configurable embedding and generation providers
-- MCP server, client, tools, authentication, and transports
+- configurable AI providers
+- bounded second-review reasoning
+- MCP server/client/tools/authentication/transports
 
-### Platform
+### Cloud and delivery
 
-- Docker
-- Docker Compose
 - Azure Container Apps
 - Azure Static Web Apps
 - Azure Bicep
+- Microsoft Entra ID
+- AWS IAM + GitHub OIDC
+- Amazon Bedrock
+- AWS integration adapters for S3, Textract, SQS, Guardrails, and SNS
+- Docker / Docker Compose
 - GitHub Container Registry
 - GitHub Actions
-- Microsoft Entra ID
-- GitHub OIDC federation with Azure
 
 ## Hybrid retrieval
-
-CaseMesh combines semantic and lexical retrieval instead of depending on a single search strategy.
 
 ```text
 User Query
    |
-   +--> Semantic Retrieval
-   |       |
-   |       v
-   |    pgvector
+   +--> Semantic Retrieval --> pgvector
    |
-   +--> Lexical Retrieval
-           |
-           v
-   PostgreSQL Full-Text Search
-           |
-           v
-        Merge
-           |
-           v
-        Rerank
-           |
-           v
-   Grounded Context
-           |
-           v
-      AI Synthesis
+   +--> Lexical Retrieval  --> PostgreSQL FTS
+   |
+   v
+Merge + Rerank
+   |
+   v
+Grounded Context
+   |
+   v
+AI Synthesis + Citations
 ```
 
-The application is designed to preserve source metadata so generated findings can remain traceable to retrieved evidence.
+CaseMesh preserves source metadata so findings can remain traceable to retrieved evidence.
 
-## Agentic workflow design
+## Agentic workflow and safety model
 
-CaseMesh deliberately avoids turning every operation into an unrestricted autonomous agent.
+CaseMesh deliberately avoids unrestricted autonomous execution.
 
-The architecture separates:
+The workflow separates:
 
-- planning and workflow coordination,
-- knowledge retrieval,
+- planning and coordination,
+- retrieval,
 - evidence analysis,
-- policy and risk reasoning,
+- AI-assisted reasoning,
+- policy and risk evaluation,
 - deterministic calculations,
-- resolution generation,
-- approval and action execution.
+- human review,
+- controlled action execution.
 
-Read-only operations can be automated more freely.
+Sensitive actions remain behind explicit application controls. A model response alone never grants permission to execute a financial, privileged, or high-risk action.
 
-Write-side or high-impact operations remain behind explicit application controls.
+## AWS Intelligence v1.1
+
+AWS Intelligence v1.1 adds a bounded cross-cloud review and document-intelligence layer.
+
+The implemented architecture includes:
+
+- AWS client/gateway abstraction,
+- temporary S3 staging and lifecycle handling,
+- Textract document intelligence,
+- SQS asynchronous completion,
+- Bedrock second review,
+- Bedrock Guardrails integration,
+- risk-trigger routing,
+- SNS escalation alerts,
+- idempotency and replay controls,
+- request timeouts and review budgets,
+- cross-cloud failure isolation,
+- federated identity support,
+- safe API summaries that avoid raw infrastructure leakage.
+
+### Real cloud validation completed
+
+The project has verified:
+
+- GitHub OIDC to AWS IAM using short-lived credentials,
+- Bedrock catalog access,
+- one bounded real Bedrock inference,
+- the real CaseMesh second-review application path through Bedrock,
+- offline fail-safe behavior for provider, guardrail, alert, risk, and policy failures,
+- final API/Web/Platform regression after the AWS integration.
+
+Normal CI does **not** call Bedrock. Real model calls remain manual and bounded.
+
+See [AWS Intelligence v1.1](docs/AWS_INTELLIGENCE_V1_1.md) for the validation record and security boundaries.
 
 ## MCP integration
 
-CaseMesh includes an MCP integration layer for controlled external actions.
-
-The implementation includes:
+CaseMesh includes an MCP integration layer with:
 
 - MCP server,
 - MCP client,
 - authenticated MCP access,
 - structured tool definitions,
 - HTTP and stdio transport support,
-- action authorization,
-- integration with investigation workflows.
+- application-level authorization,
+- investigation-workflow integration.
 
-MCP is used as an integration boundary rather than as a replacement for normal internal application functions.
+MCP is treated as an integration boundary, not a bypass around normal application policy.
 
-## Authentication
+## Authentication and cloud identity
 
-The deployed application uses Microsoft Entra ID.
+### Application users
 
-The frontend authenticates users through MSAL, while Azure Container Apps authentication protects API access.
+The deployed application uses Microsoft Entra ID. The frontend signs users in through MSAL, while Azure Container Apps authentication protects API access.
 
-Public health endpoints remain available for operational readiness checks.
+### GitHub to Azure
+
+Azure deployment uses GitHub OIDC federation rather than a stored Azure client secret.
+
+### GitHub to AWS
+
+Manual AWS validation workflows use GitHub OIDC with `AssumeRoleWithWebIdentity` and short-lived STS sessions. Static AWS access keys are not required.
 
 ## CI quality gates
 
@@ -184,98 +222,72 @@ Three independent CI workflows run automatically for changes to `main` and pull 
 
 ### API CI
 
-Validates:
-
-- dependency integrity,
-- Ruff,
-- MyPy,
-- pytest.
+- dependency integrity
+- Ruff
+- MyPy
+- pytest
 
 ### Web CI
 
-Validates:
-
-- reproducible dependency installation with `npm ci`,
-- Oxlint,
-- production frontend build.
+- `npm ci`
+- Oxlint
+- production build
 
 ### Platform CI
 
-Validates:
+- Docker Compose validation
+- API container build
+- non-root runtime user verification
+- expected container working directory
+- Azure Bicep compilation
 
-- Docker Compose configuration,
-- API container build,
-- non-root container runtime user,
-- expected container working directory,
-- Azure CLI availability,
-- Azure Bicep compilation.
+A separate manual **CaseMesh Final Full Regression** workflow re-runs the complete API, Web, and Platform quality gates before a portfolio/release checkpoint.
 
 ## Deployment model
 
-Deployments to the Azure dev environment are intentionally manual.
-
-This prevents every source change from creating unnecessary cloud revisions or consuming cloud resources.
+Cloud deployment is intentionally manual.
 
 ### API deployment
 
-The API deployment workflow:
+The API workflow:
 
-1. requires the `main` branch,
+1. requires `main`,
 2. requires explicit `DEPLOY` confirmation,
-3. builds the API container,
-4. publishes an immutable image to GHCR using the Git commit SHA,
+3. builds the API image,
+4. publishes an immutable GHCR image tagged with the Git commit SHA,
 5. authenticates to Azure through GitHub OIDC,
-6. updates the Azure Container App,
+6. updates Azure Container Apps,
 7. waits for the exact new revision,
 8. verifies `/health/ready`,
-9. verifies the exact image and revision,
-10. rolls back to the previous image if deployment verification fails.
-
-Container images use immutable references in the form:
-
-```text
-ghcr.io/mohamadktich/casemesh-api:<git-sha>
-```
+9. verifies the exact image/revision,
+10. rolls back to the previous image if verification fails.
 
 ### Frontend deployment
 
-The frontend deployment workflow:
+The frontend workflow:
 
-1. requires the `main` branch,
+1. requires `main`,
 2. requires explicit `DEPLOY` confirmation,
-3. validates required deployment configuration,
-4. installs dependencies with `npm ci`,
-5. runs linting,
-6. creates the production Vite build,
-7. verifies the configured production API endpoint is embedded,
-8. deploys the prebuilt application to Azure Static Web Apps,
-9. verifies the production website responds successfully.
+3. installs dependencies reproducibly,
+4. runs linting,
+5. builds the production Vite app,
+6. verifies the compiled production API endpoint,
+7. deploys the prebuilt output to Azure Static Web Apps,
+8. verifies the production site over HTTPS.
 
 ## CI/CD security
 
-The GitHub Actions configuration is hardened with:
+GitHub Actions are hardened with:
 
-- minimum required workflow permissions,
-- GitHub Actions pinned to immutable commit SHAs,
-- `persist-credentials: false` on repository checkout,
-- Azure authentication through OIDC instead of a stored Azure client secret,
-- restricted `packages: write` permission only where GHCR publishing is required,
-- `id-token: write` only for the Azure deployment workflow,
-- repository variables for non-secret deployment configuration,
-- GitHub Secrets for sensitive deployment tokens,
-- manual deployment confirmation,
+- minimum workflow permissions,
+- external Actions pinned to immutable commit SHAs,
+- `persist-credentials: false`,
+- OIDC instead of stored Azure/AWS long-lived cloud credentials,
+- `id-token: write` only where federation is required,
+- restricted package publishing permissions,
+- manual deployment and real-cloud validation confirmation,
 - immutable API image tags,
-- post-deployment verification and API rollback.
-
-## Secret handling
-
-Secrets are not committed to Git.
-
-Local environment files such as `.env` and `.env.local` are ignored.
-
-Azure infrastructure secret inputs are declared as secure Bicep parameters.
-
-The repository contains only safe example configuration files.
+- post-deployment verification and rollback.
 
 ## Azure dev environment
 
@@ -292,23 +304,23 @@ API readiness
 https://casemesh-api-dev.lemonwater-0bb11448.uaenorth.azurecontainerapps.io/health/ready
 ```
 
-The Azure environment exists for development validation and portfolio demonstration. It is not presented as a production SLA environment.
+This environment is for development validation and portfolio demonstration, not a production SLA environment.
 
-## Zero-cost-first cloud strategy
+## Zero-cost-first strategy
 
-CaseMesh avoids requiring permanently paid infrastructure for normal development.
+CaseMesh avoids making permanently paid infrastructure a prerequisite for development.
 
 The project favors:
 
-- local development,
+- local execution,
 - open-source components,
-- free service tiers where appropriate,
-- scale-to-zero cloud compute,
+- free tiers where appropriate,
+- scale-to-zero compute,
 - small dev resource limits,
-- targeted cloud validation,
-- manual deployments instead of deployment on every commit.
-
-The architecture can be expanded later without making paid infrastructure a prerequisite for contributing to or evaluating the project.
+- manual cloud validation,
+- bounded model calls,
+- mock/contract testing for failure paths,
+- manual deployment instead of deploy-on-every-commit.
 
 ## Repository structure
 
@@ -327,16 +339,11 @@ casemesh-ai/
 +-- docs/
 |   +-- architecture/            # Architecture records
 |   +-- images/                  # Architecture diagrams
+|   +-- AWS_INTELLIGENCE_V1_1.md
 |
 +-- scripts/                     # Validation and utility scripts
 |
-+-- .github/
-|   +-- workflows/
-|       +-- api-ci.yml
-|       +-- api-deploy-dev.yml
-|       +-- platform-ci.yml
-|       +-- web-ci.yml
-|       +-- web-deploy-dev.yml
++-- .github/workflows/           # CI, deployment, and manual validation workflows
 |
 +-- ARCHITECTURE.md
 +-- CONTRIBUTING.md
@@ -347,6 +354,8 @@ casemesh-ai/
 
 ## Active GitHub Actions workflows
 
+Core delivery:
+
 ```text
 CaseMesh API CI
 CaseMesh Web CI
@@ -355,11 +364,21 @@ CaseMesh API Deploy Dev
 CaseMesh Web Deploy Dev
 ```
 
-Diagnostic deployment workflows used during initial OIDC and GHCR validation were intentionally removed after the permanent deployment workflows were verified.
+Manual AWS and release validation:
+
+```text
+CaseMesh AWS OIDC Validate
+CaseMesh AWS Bedrock Catalog Validate
+CaseMesh AWS Bedrock Inference Validate
+CaseMesh AWS Application Path Validate
+CaseMesh AWS Safety Validate
+CaseMesh Final Full Regression
+```
 
 ## Documentation
 
 - [Architecture](ARCHITECTURE.md)
+- [AWS Intelligence v1.1](docs/AWS_INTELLIGENCE_V1_1.md)
 - [Security Policy](SECURITY.md)
 - [Contribution Guide](CONTRIBUTING.md)
 - [Roadmap](ROADMAP.md)
@@ -369,23 +388,23 @@ Diagnostic deployment workflows used during initial OIDC and GHCR validation wer
 
 ## Project positioning
 
-CaseMesh AI is an engineering portfolio project focused on demonstrating practical experience across:
+CaseMesh AI is an engineering portfolio project demonstrating practical experience across:
 
 - AI engineering,
 - RAG systems,
 - agentic workflows,
 - MCP,
-- backend engineering,
-- frontend integration,
-- authentication,
-- cloud architecture,
+- backend and frontend engineering,
+- authentication and cloud identity,
+- multi-cloud integration,
 - Infrastructure as Code,
 - containerization,
 - CI/CD,
 - deployment safety,
-- security-oriented engineering.
+- security-oriented engineering,
+- cost-aware architecture.
 
-The goal is not to maximize the number of technologies used. The goal is to show how AI capabilities can be integrated into a controlled, testable, deployable software system.
+The goal is not to maximize the number of technologies. The goal is to show that AI capabilities can be integrated into a controlled, testable, deployable software system with explicit safety boundaries.
 
 ## License
 
