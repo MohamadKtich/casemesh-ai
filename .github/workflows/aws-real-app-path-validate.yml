@@ -1,0 +1,225 @@
+name: CaseMesh AWS Real App Path Validate
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type VALIDATE_REAL_APP_PATH to confirm one bounded CaseMesh second-review call'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: casemesh-aws-real-app-path-validate
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate CaseMesh second-review path through real Bedrock
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    defaults:
+      run:
+        working-directory: apps/api
+
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      AWS_INTELLIGENCE_ENABLED: "true"
+      AWS_CLIENT_MODE: "sdk"
+      AWS_IDENTITY_MODE: "default_chain"
+      AWS_AI_REGION: ${{ vars.AWS_AI_REGION }}
+      AWS_BEDROCK_REVIEW_ENABLED: "true"
+      AWS_BEDROCK_GUARDRAILS_ENABLED: "false"
+      AWS_SNS_ALERTS_ENABLED: "false"
+      AWS_BEDROCK_MODEL_ID: "mistral.ministral-3-8b-instruct"
+      AWS_REQUEST_TIMEOUT_SECONDS: "180"
+      AWS_MAX_REVIEWS_PER_INVESTIGATION: "1"
+
+    steps:
+      - name: Require main branch and confirmation
+        shell: bash
+        env:
+          VALIDATE_CONFIRMATION: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+
+          test "${GITHUB_REF}" = "refs/heads/main"
+          test "${VALIDATE_CONFIRMATION}" = "VALIDATE_REAL_APP_PATH"
+
+      - name: Validate non-secret AWS configuration
+        shell: bash
+        env:
+          CASEMESH_AWS_ROLE_ARN: ${{ vars.AWS_GITHUB_OIDC_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+
+          test -n "${CASEMESH_AWS_ROLE_ARN}"
+          test -n "${AWS_AI_REGION}"
+
+          case "${CASEMESH_AWS_ROLE_ARN}" in
+            arn:aws:iam::*:role/*)
+              ;;
+            *)
+              echo "AWS_GITHUB_OIDC_ROLE_ARN must be a standard AWS IAM role ARN."
+              exit 1
+              ;;
+          esac
+
+          if ! printf '%s' "${AWS_AI_REGION}" \
+            | grep -Eq '^[a-z]{2}(-gov)?-[a-z0-9-]+-[0-9]+$'; then
+            echo "AWS_AI_REGION has an invalid region format."
+            exit 1
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/pyproject.toml
+
+      - name: Install CaseMesh API
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip check
+
+      - name: Configure AWS credentials with GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
+        with:
+          role-to-assume: ${{ vars.AWS_GITHUB_OIDC_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_AI_REGION }}
+          audience: sts.amazonaws.com
+          role-session-name: casemesh-real-app-path-${{ github.run_id }}
+          role-duration-seconds: 900
+          disable-retry: true
+          mask-aws-account-id: true
+          unset-current-credentials: true
+
+      - name: Validate assumed AWS identity
+        shell: bash
+        env:
+          EXPECTED_ROLE_ARN: ${{ vars.AWS_GITHUB_OIDC_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+
+          read -r caller_account caller_arn < <(
+            aws sts get-caller-identity \
+              --query '[Account,Arn]' \
+              --output text
+          )
+
+          expected_account="$(printf '%s' "${EXPECTED_ROLE_ARN}" | cut -d: -f5)"
+
+          test -n "${caller_account}"
+          test -n "${caller_arn}"
+          test "${caller_account}" = "${expected_account}"
+
+          case "${caller_arn}" in
+            "arn:aws:sts::${expected_account}:assumed-role/"*)
+              ;;
+            *)
+              echo "AWS caller identity is not an assumed-role session."
+              exit 1
+              ;;
+          esac
+
+          echo "AWS GitHub OIDC identity validation passed."
+
+      - name: Validate real CaseMesh second-review application path
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python - <<'PY'
+          import asyncio
+          from uuid import UUID
+
+          from casemesh.api.routes.investigations import build_second_review_provider
+          from casemesh.core.config import Settings
+          from casemesh.intelligence.contracts import ReviewEvidence, SecondReviewRequest
+          from casemesh.intelligence.second_review_gate import evaluate_second_review
+
+
+          async def main() -> None:
+              settings = Settings()
+
+              assert settings.aws_intelligence_enabled is True
+              assert settings.aws_client_mode == "sdk"
+              assert settings.aws_bedrock_review_enabled is True
+              assert settings.aws_bedrock_guardrails_enabled is False
+              assert settings.aws_sns_alerts_enabled is False
+              assert settings.aws_max_reviews_per_investigation == 1
+
+              provider = build_second_review_provider(settings=settings)
+              assert provider is not None
+              assert provider.provider_name == "aws-bedrock"
+              assert provider.model_name == "mistral.ministral-3-8b-instruct"
+
+              health = await provider.health()
+              assert health.get("mode") == "sdk"
+              assert health.get("api") == "converse"
+              assert health.get("structured_output") is True
+              assert health.get("network_checked") is False
+
+              request = SecondReviewRequest(
+                  case_id=UUID("11111111-1111-4111-8111-111111111111"),
+                  investigation_run_id=UUID("22222222-2222-4222-8222-222222222222"),
+                  objective="Validate whether the supplied evidence supports the finding.",
+                  primary_finding=(
+                      "The supplied evidence states that CaseMesh uses human approval "
+                      "before sensitive actions."
+                  ),
+                  primary_confidence="high",
+                  primary_abstained=False,
+                  evidence=(
+                      ReviewEvidence(
+                          chunk_id=UUID("33333333-3333-4333-8333-333333333333"),
+                          document_id=UUID("44444444-4444-4444-8444-444444444444"),
+                          chunk_index=0,
+                          excerpt=(
+                              "CaseMesh requires a human reviewer to approve sensitive "
+                              "actions before execution."
+                          ),
+                          citation_label="validation-evidence",
+                      ),
+                  ),
+                  gap_codes=(),
+              )
+
+              result = await provider.review(request)
+              decision = evaluate_second_review(result)
+
+              assert result.provider == "aws-bedrock"
+              assert result.model == settings.aws_bedrock_model_id
+              assert result.agreement in {"agree", "disagree", "uncertain"}
+              assert result.risk_level in {"low", "medium", "high", "critical"}
+              assert result.recommended_route in {"continue", "human_review"}
+              assert decision.effective_route in {"continue", "human_review"}
+              assert isinstance(decision.forced_human_review, bool)
+
+              print("CASEMESH_REAL_SECOND_REVIEW_PATH=PASS")
+              print(f"PROVIDER={result.provider}")
+              print(f"MODEL={result.model}")
+              print(f"AGREEMENT={result.agreement}")
+              print(f"RISK_LEVEL={result.risk_level}")
+              print(f"PROVIDER_ROUTE={result.recommended_route}")
+              print(f"EFFECTIVE_ROUTE={decision.effective_route}")
+              print(f"FORCED_HUMAN_REVIEW={decision.forced_human_review}")
+              print("MODEL_RATIONALE_LOGGED=NO")
+              print("MODEL_CONCERNS_LOGGED=NO")
+              print("RESOURCE_CREATION=NONE")
+
+
+          asyncio.run(main())
+          PY
