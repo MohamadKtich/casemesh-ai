@@ -50,6 +50,36 @@ type ActiveView =
   | "evaluation"
 
 
+type ThemeMode =
+  | "dark"
+  | "light"
+
+
+function getInitialTheme(): ThemeMode {
+  if (typeof window === "undefined") {
+    return "dark"
+  }
+
+  const saved =
+    window.localStorage.getItem(
+      "casemesh-theme",
+    )
+
+  if (
+    saved === "dark" ||
+    saved === "light"
+  ) {
+    return saved
+  }
+
+  return window.matchMedia(
+    "(prefers-color-scheme: light)",
+  ).matches
+    ? "light"
+    : "dark"
+}
+
+
 function humanizeValue(
   value: string,
 ): string {
@@ -163,6 +193,27 @@ function App() {
   ] = useState<CaseRecord | null>(
     null,
   )
+
+  const [
+    theme,
+    setTheme,
+  ] = useState<ThemeMode>(
+    getInitialTheme,
+  )
+
+
+  useEffect(() => {
+    document.documentElement.dataset.theme =
+      theme
+
+    document.documentElement.style.colorScheme =
+      theme
+
+    window.localStorage.setItem(
+      "casemesh-theme",
+      theme,
+    )
+  }, [theme])
 
 
   useEffect(() => {
@@ -289,6 +340,19 @@ function App() {
       : connectionState === "offline"
         ? "Unavailable"
         : "Checking"
+
+  const viewKey =
+    `${visibleActiveView}:${visibleSelectedCase?.id ?? "root"}`
+
+
+  function toggleTheme() {
+    setTheme(
+      (current) =>
+        current === "dark"
+          ? "light"
+          : "dark",
+    )
+  }
 
 
   function handleSignIn() {
@@ -1241,6 +1305,37 @@ function App() {
           </div>
 
           <div className="topbar-actions">
+            <button
+              type="button"
+              className="theme-toggle"
+              onClick={toggleTheme}
+              aria-label={
+                theme === "dark"
+                  ? "Switch to light theme"
+                  : "Switch to dark theme"
+              }
+              title={
+                theme === "dark"
+                  ? "Switch to light theme"
+                  : "Switch to dark theme"
+              }
+            >
+              <span
+                className="theme-toggle-icon"
+                aria-hidden="true"
+              >
+                {theme === "dark"
+                  ? "☼"
+                  : "◐"}
+              </span>
+
+              <span className="theme-toggle-copy">
+                {theme === "dark"
+                  ? "Light"
+                  : "Dark"}
+              </span>
+            </button>
+
             <div
               className={
                 `connection-pill ${connectionState}`
@@ -1312,63 +1407,69 @@ function App() {
           </div>
         </header>
 
-        {visibleActiveView === "overview" &&
-          renderOverview()}
+        <div
+          key={viewKey}
+          className="view-stage"
+        >
+          {visibleActiveView === "overview" &&
+            renderOverview()}
 
-        {isAuthenticated &&
-          visibleActiveView === "cases" &&
-          !visibleSelectedCase && (
-            <CasesWorkspace
-              onOpenCase={openCase}
-            />
-          )}
+          {isAuthenticated &&
+            visibleActiveView === "cases" &&
+            !visibleSelectedCase && (
+              <CasesWorkspace
+                onOpenCase={openCase}
+              />
+            )}
 
-        {isAuthenticated &&
-          visibleActiveView === "cases" &&
-          selectedCase &&
-          renderCaseDetails(
-            selectedCase,
-          )}
+          {isAuthenticated &&
+            visibleActiveView === "cases" &&
+            selectedCase &&
+            renderCaseDetails(
+              selectedCase,
+            )}
 
-        {isAuthenticated &&
-          visibleActiveView === "evidence" &&
-          visibleSelectedCase && (
-            <EvidenceWorkspace
-              caseRecord={visibleSelectedCase}
-              onBack={backToSelectedCase}
-            />
-          )}
+          {isAuthenticated &&
+            visibleActiveView === "evidence" &&
+            visibleSelectedCase && (
+              <EvidenceWorkspace
+                caseRecord={visibleSelectedCase}
+                onBack={backToSelectedCase}
+              />
+            )}
 
-        {isAuthenticated &&
-          visibleActiveView === "investigations" &&
-          visibleSelectedCase && (
-            <InvestigationsWorkspace
-              caseRecord={visibleSelectedCase}
-              onBack={backToSelectedCase}
-            />
-          )}
+          {isAuthenticated &&
+            visibleActiveView === "investigations" &&
+            visibleSelectedCase && (
+              <InvestigationsWorkspace
+                caseRecord={visibleSelectedCase}
+                onBack={backToSelectedCase}
+              />
+            )}
 
-        {isAuthenticated &&
-          visibleActiveView === "approvals" &&
-          visibleSelectedCase && (
-            <ApprovalsWorkspace
-              caseRecord={visibleSelectedCase}
-              onBack={backToSelectedCase}
-            />
-          )}
+          {isAuthenticated &&
+            visibleActiveView === "approvals" &&
+            visibleSelectedCase && (
+              <ApprovalsWorkspace
+                caseRecord={visibleSelectedCase}
+                onBack={backToSelectedCase}
+              />
+            )}
 
-        {isAuthenticated &&
-          visibleActiveView === "evaluation" && (
-            <EvaluationWorkspace />
-          )}
-        {isAuthenticated &&
-          visibleActiveView === "actions" &&
-          visibleSelectedCase && (
-            <ActionsWorkspace
-              caseRecord={visibleSelectedCase}
-              onBack={backToSelectedCase}
-            />
-          )}
+          {isAuthenticated &&
+            visibleActiveView === "evaluation" && (
+              <EvaluationWorkspace />
+            )}
+
+          {isAuthenticated &&
+            visibleActiveView === "actions" &&
+            visibleSelectedCase && (
+              <ActionsWorkspace
+                caseRecord={visibleSelectedCase}
+                onBack={backToSelectedCase}
+              />
+            )}
+        </div>
       </main>
     </div>
   )
