@@ -14,16 +14,34 @@
   background: #070b14;
 }
 
+:root[data-theme="light"] {
+  color-scheme: light;
+  background: #f4f6fb;
+}
+
 html {
-  background: #070b14;
+  min-height: 100%;
+  background: inherit;
+  scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background: inherit;
 }
 
 button {
   font-family: inherit;
+}
+
+button,
+a,
+input,
+textarea,
+select,
+summary {
+  -webkit-tap-highlight-color:
+    transparent;
 }
