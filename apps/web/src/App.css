@@ -3224,3 +3224,143 @@ textarea {
     text-align: left;
   }
 }
+
+
+/* Storytelling polish v3 */
+
+.story-timeline-item small,
+.investigation-run-item time,
+.investigation-run-stats span,
+.governance-queue-item time,
+.workspace-story-metrics span,
+.workspace-story-metrics p,
+.case-story-grid span,
+.case-story-footer span,
+.case-journey-step small,
+.story-decision-banner span,
+.story-source-card span {
+  font-size: 10px;
+}
+
+.story-copy,
+.story-callout p,
+.story-source-card p,
+.case-story-grid p,
+.story-decision-banner p {
+  font-size: 12px;
+}
+
+.investigation-run-objective {
+  font-size: 11px;
+}
+
+.story-detail-row span,
+.story-detail-row strong,
+.story-review-grid strong,
+.story-next-meta strong {
+  font-size: 11px;
+}
+
+.evidence-excerpt-card {
+  padding: 16px;
+  border: 1px solid #1f2e47;
+  border-radius: 12px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(12, 21, 36, 0.98),
+      rgba(7, 13, 23, 0.98)
+    );
+}
+
+.evidence-excerpt-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.evidence-excerpt-heading > div {
+  display: grid;
+  gap: 5px;
+}
+
+.evidence-excerpt-heading > div > span {
+  color: #6f7f98;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.evidence-excerpt-heading strong {
+  color: #e3eaf5;
+  font-size: 13px;
+}
+
+.evidence-excerpt-card > p {
+  margin: 14px 0 0;
+  color: #b4c0d1;
+  font-size: 12px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.evidence-technical-details {
+  margin-top: 14px;
+  border-top: 1px solid #1d2b42;
+  padding-top: 12px;
+}
+
+.evidence-technical-details summary {
+  width: fit-content;
+  color: #71829b;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.evidence-technical-grid {
+  display: grid;
+  grid-template-columns:
+    0.7fr
+    0.8fr
+    2fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.evidence-technical-grid > div {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #1b2940;
+  border-radius: 8px;
+  background: #08101b;
+}
+
+.evidence-technical-grid span {
+  display: block;
+  color: #63728a;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.evidence-technical-grid strong {
+  display: block;
+  margin-top: 5px;
+  color: #aebbd0;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 700px) {
+  .evidence-technical-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .evidence-excerpt-heading {
+    flex-direction: column;
+  }
+}
