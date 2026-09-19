@@ -732,7 +732,8 @@ function InvestigationsWorkspace({
                     <div
                       className={
                         selectedRun.risk_triggers ||
-                        selectedRun.second_review
+                        selectedRun.second_review ||
+                        selectedRun.state === "completed"
                           ? "story-timeline-item done"
                           : "story-timeline-item"
                       }
@@ -740,7 +741,13 @@ function InvestigationsWorkspace({
                       <span>5</span>
                       <strong>Review</strong>
                       <small>
-                        Risk and routing assessed
+                        {selectedRun.second_review ||
+                        selectedRun.risk_triggers
+                          ?.second_review_requested
+                          ? "Risk and routing assessed"
+                          : selectedRun.state === "completed"
+                            ? "No elevated review required"
+                            : "Risk and routing pending"}
                       </small>
                     </div>
 
