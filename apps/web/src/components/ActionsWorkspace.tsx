@@ -30,14 +30,18 @@ function formatDate(
 }
 
 
-function formatJson(
-  value: Record<string, unknown>,
+function humanize(
+  value: string | null | undefined,
 ): string {
-  return JSON.stringify(
-    value,
-    null,
-    2,
-  )
+  if (!value) {
+    return "N/A"
+  }
+
+  return value
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) =>
+      character.toUpperCase(),
+    )
 }
 
 
@@ -48,6 +52,33 @@ function canDryRun(
     action.status === "approved" ||
     action.status === "auto_approved"
   )
+}
+
+
+function executionNextStep(
+  action: ActionRequestRecord,
+): string {
+  if (canDryRun(action)) {
+    return "The action is approved. Run a dry simulation to verify behavior without creating an external side effect."
+  }
+
+  if (action.status === "awaiting_approval") {
+    return "This action is waiting for human approval before any execution simulation can proceed."
+  }
+
+  if (action.status === "rejected") {
+    return "This action is stopped because the human decision rejected it."
+  }
+
+  if (action.status === "executed") {
+    return "Execution has already completed. Review the outcome and audit trail."
+  }
+
+  if (action.status === "failed") {
+    return "Execution failed. Review the error and audit trail before retrying."
+  }
+
+  return "Review the policy state and audit history before continuing."
 }
 
 
@@ -417,10 +448,8 @@ function ActionsWorkspace({
           </h2>
 
           <p>
-            Inspect and safely simulate approved
-            actions for
-            {" "}
-            {caseRecord.case_number}.
+            Follow the execution story from policy
+            decision to safe simulation and audit.
           </p>
         </div>
 
@@ -432,6 +461,38 @@ function ActionsWorkspace({
           </span>
         </div>
       </div>
+
+      {!loading &&
+        actions.length > 0 && (
+          <section className="workspace-story-metrics">
+            <article>
+              <span>TOTAL ACTIONS</span>
+              <strong>{actions.length}</strong>
+              <p>
+                Controlled action requests connected
+                to this case.
+              </p>
+            </article>
+
+            <article>
+              <span>READY TO SIMULATE</span>
+              <strong>{executableCount}</strong>
+              <p>
+                Approved requests that can safely run
+                in dry-run mode.
+              </p>
+            </article>
+
+            <article>
+              <span>EXECUTION MODE</span>
+              <strong>Dry Run</strong>
+              <p>
+                The interface does not expose live
+                external side effects.
+              </p>
+            </article>
+          </section>
+        )}
 
       <div
         className="pipeline-status complete"
@@ -480,12 +541,12 @@ function ActionsWorkspace({
           <div className="evidence-layout">
             <aside className="documents-panel">
               <div className="section-label">
-                ACTION REQUESTS
+                ACTION QUEUE
               </div>
 
               <div className="document-list">
                 {actions.map(
-                  (action) => (
+                  (action, index) => (
                     <button
                       key={
                         action.action_request_id
@@ -495,25 +556,45 @@ function ActionsWorkspace({
                         selectedAction
                           ?.action_request_id ===
                         action.action_request_id
-                          ? "document-item active"
-                          : "document-item"
+                          ? "document-item governance-queue-item active"
+                          : "document-item governance-queue-item"
                       }
                       onClick={() =>
                         selectAction(action)
                       }
                     >
                       <strong>
-                        {action.action_type}
+                        Action
+                        {" "}
+                        {String(
+                          index + 1,
+                        ).padStart(
+                          2,
+                          "0",
+                        )}
+                        {" · "}
+                        {humanize(
+                          action.action_type,
+                        )}
                       </strong>
 
                       <span>
-                        {action.status}
-                        {" | "}
-                        {
+                        {humanize(
+                          action.status,
+                        )}
+                        {" · "}
+                        {humanize(
                           action.policy
-                            .risk_level
-                        }
+                            .risk_level,
+                        )}
+                        {" risk"}
                       </span>
+
+                      <time>
+                        {formatDate(
+                          action.created_at,
+                        )}
+                      </time>
                     </button>
                   ),
                 )}
@@ -522,18 +603,24 @@ function ActionsWorkspace({
 
             <div className="document-detail-panel">
               {selectedAction && (
-                <>
-                  <div className="document-detail-header">
+                <div className="investigation-story">
+                  <section className="story-hero">
                     <div>
                       <div className="section-label">
-                        SELECTED ACTION
+                        ACTION STORY
                       </div>
 
                       <h3>
-                        {
-                          selectedAction.action_type
-                        }
+                        {humanize(
+                          selectedAction.action_type,
+                        )}
                       </h3>
+
+                      <p>
+                        What is allowed, what has been
+                        approved, and what can safely
+                        execute next.
+                      </p>
                     </div>
 
                     <span
@@ -541,136 +628,206 @@ function ActionsWorkspace({
                         `status-badge status-${selectedAction.status}`
                       }
                     >
-                      {
-                        selectedAction.status
-                      }
+                      {humanize(
+                        selectedAction.status,
+                      )}
                     </span>
-                  </div>
+                  </section>
 
-                  <div className="document-metadata">
+                  <div className="story-metrics">
                     <div>
-                      <span>
-                        Action Request ID
-                      </span>
-
+                      <span>Policy</span>
                       <strong>
-                        {
-                          selectedAction
-                            .action_request_id
-                        }
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>
-                        Policy
-                      </span>
-
-                      <strong>
-                        {
+                        {humanize(
                           selectedAction
                             .policy
-                            .decision
-                        }
+                            .decision,
+                        )}
                       </strong>
                     </div>
 
                     <div>
-                      <span>
-                        Risk Level
-                      </span>
-
+                      <span>Risk</span>
                       <strong>
-                        {
+                        {humanize(
                           selectedAction
                             .policy
-                            .risk_level
-                        }
+                            .risk_level,
+                        )}
                       </strong>
                     </div>
 
                     <div>
-                      <span>
-                        Approval Decision
-                      </span>
-
+                      <span>Approval</span>
                       <strong>
-                        {
+                        {humanize(
                           selectedAction
-                            .approval_decision ??
-                          "N/A"
-                        }
+                            .approval_decision,
+                        )}
                       </strong>
                     </div>
 
                     <div>
-                      <span>
-                        Reviewer
-                      </span>
-
+                      <span>Safety</span>
                       <strong>
-                        {
-                          selectedAction
-                            .reviewer_ref ??
-                          "N/A"
-                        }
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>
-                        Execution Enabled
-                      </span>
-
-                      <strong>
-                        {
-                          selectedAction
-                            .execution_enabled
-                            ? "Yes"
-                            : "No"
-                        }
+                        Dry Run
                       </strong>
                     </div>
                   </div>
 
-                  <div className="chunks-header">
-                    <div>
-                      <div className="section-label">
-                        POLICY
+                  <section className="story-timeline evidence-story-timeline">
+                    <div className="story-timeline-item done">
+                      <span>1</span>
+                      <strong>Requested</strong>
+                      <small>
+                        Action request created
+                      </small>
+                    </div>
+
+                    <div className="story-timeline-item done">
+                      <span>2</span>
+                      <strong>Policy</strong>
+                      <small>
+                        Risk and permission assessed
+                      </small>
+                    </div>
+
+                    <div
+                      className={
+                        selectedAction
+                          .approval_decision ||
+                        selectedAction.status ===
+                          "auto_approved"
+                          ? "story-timeline-item done"
+                          : "story-timeline-item"
+                      }
+                    >
+                      <span>3</span>
+                      <strong>Approval</strong>
+                      <small>
+                        Human or policy decision
+                      </small>
+                    </div>
+
+                    <div
+                      className={
+                        executionResult ||
+                        selectedAction.status ===
+                          "executed"
+                          ? "story-timeline-item done"
+                          : "story-timeline-item"
+                      }
+                    >
+                      <span>4</span>
+                      <strong>Simulation</strong>
+                      <small>
+                        Safe execution outcome
+                      </small>
+                    </div>
+                  </section>
+
+                  <div className="story-grid">
+                    <article className="story-card">
+                      <div className="story-step">
+                        01
                       </div>
 
-                      <h3>
-                        Guardrail Evaluation
-                      </h3>
-                    </div>
-                  </div>
+                      <div className="section-label">
+                        REQUEST
+                      </div>
 
-                  <article className="chunk-card">
-                    <pre>
-                      {
-                        selectedAction
+                      <h4>
+                        What action is being attempted?
+                      </h4>
+
+                      <p className="story-copy">
+                        {humanize(
+                          selectedAction.action_type,
+                        )}
+                        {" "}
+                        was requested for
+                        {" "}
+                        {caseRecord.case_number}.
+                      </p>
+                    </article>
+
+                    <article className="story-card">
+                      <div className="story-step">
+                        02
+                      </div>
+
+                      <div className="section-label">
+                        GUARDRAIL
+                      </div>
+
+                      <h4>
+                        Why can or can’t it proceed?
+                      </h4>
+
+                      <p className="story-copy">
+                        {selectedAction
                           .policy
                           .rationale ||
-                        "No policy rationale available."
-                      }
-                    </pre>
-                  </article>
+                          "No policy rationale is available."}
+                      </p>
+                    </article>
 
-                  <div className="chunks-header">
-                    <div>
-                      <div className="section-label">
-                        REVIEWED PAYLOAD
+                    <article className="story-card story-card-accent">
+                      <div className="story-step">
+                        03
                       </div>
 
-                      <h3>
-                        Execution Payload
-                      </h3>
-                    </div>
+                      <div className="section-label">
+                        APPROVAL STATE
+                      </div>
+
+                      <h4>
+                        Has a human cleared it?
+                      </h4>
+
+                      <p className="story-copy">
+                        {selectedAction
+                          .approval_decision
+                          ? `Decision: ${humanize(
+                              selectedAction
+                                .approval_decision,
+                            )}. Reviewer: ${selectedAction.reviewer_ref ??
+                              "N/A"}.`
+                          : selectedAction.status ===
+                              "auto_approved"
+                            ? "Policy automatically approved this request."
+                            : "No completed approval decision is recorded yet."}
+                      </p>
+                    </article>
+
+                    <article className="story-card story-next-action">
+                      <div className="story-step">
+                        04
+                      </div>
+
+                      <div className="section-label">
+                        NEXT STEP
+                      </div>
+
+                      <h4>
+                        What should happen now?
+                      </h4>
+
+                      <p className="story-copy">
+                        {executionNextStep(
+                          selectedAction,
+                        )}
+                      </p>
+                    </article>
                   </div>
 
-                  <article className="chunk-card">
-                    <pre>
-                      {formatJson(
+                  <details className="story-details">
+                    <summary>
+                      Execution payload
+                    </summary>
+
+                    <pre className="story-raw-json">
+                      {JSON.stringify(
                         Object.keys(
                           selectedAction
                             .reviewed_payload,
@@ -679,9 +836,11 @@ function ActionsWorkspace({
                               .reviewed_payload
                           : selectedAction
                               .payload,
+                        null,
+                        2,
                       )}
                     </pre>
-                  </article>
+                  </details>
 
                   <section className="evidence-upload-panel">
                     <div>
@@ -806,173 +965,107 @@ function ActionsWorkspace({
                   </section>
 
                   {executionResult && (
-                    <>
-                      <div className="chunks-header">
-                        <div>
-                          <div className="section-label">
-                            EXECUTION RESULT
-                          </div>
+                    <section className="story-decision-banner">
+                      <div>
+                        <span>
+                          DRY RUN OUTCOME
+                        </span>
 
-                          <h3>
-                            Dry Run Outcome
-                          </h3>
-                        </div>
-                      </div>
-
-                      <div className="document-metadata">
-                        <div>
-                          <span>
-                            Mode
-                          </span>
-
-                          <strong>
-                            {
-                              executionResult.mode
-                            }
-                          </strong>
-                        </div>
-
-                        <div>
-                          <span>
-                            Status
-                          </span>
-
-                          <strong>
-                            {
-                              executionResult.status
-                            }
-                          </strong>
-                        </div>
-
-                        <div>
-                          <span>
-                            Idempotent Replay
-                          </span>
-
-                          <strong>
-                            {
-                              executionResult
-                                .idempotent_replay
-                                ? "Yes"
-                                : "No"
-                            }
-                          </strong>
-                        </div>
-
-                        <div>
-                          <span>
-                            External Side Effect
-                          </span>
-
-                          <strong>
-                            {
-                              executionResult
-                                .external_side_effect
-                                ? "Yes"
-                                : "No"
-                            }
-                          </strong>
-                        </div>
-
-                        <div>
-                          <span>
-                            External Reference
-                          </span>
-
-                          <strong>
-                            {
-                              executionResult
-                                .external_ref
-                            }
-                          </strong>
-                        </div>
-                      </div>
-
-                      <article className="chunk-card">
-                        <pre>
-                          {formatJson(
-                            executionResult
-                              .details,
+                        <strong>
+                          {humanize(
+                            executionResult.status,
                           )}
-                        </pre>
-                      </article>
-                    </>
-                  )}
-
-                  <div className="chunks-header">
-                    <div>
-                      <div className="section-label">
-                        AUDIT
+                        </strong>
                       </div>
 
-                      <h3>
-                        Execution Timeline
-                      </h3>
-                    </div>
-                  </div>
-
-                  {loadingAudit && (
-                    <div className="empty-state">
-                      Loading audit events...
-                    </div>
+                      <p>
+                        Mode:
+                        {" "}
+                        {humanize(
+                          executionResult.mode,
+                        )}
+                        {" · "}
+                        External side effect:
+                        {" "}
+                        {executionResult
+                          .external_side_effect
+                          ? "Yes"
+                          : "No"}
+                        {" · "}
+                        Reference:
+                        {" "}
+                        {executionResult.external_ref}
+                      </p>
+                    </section>
                   )}
 
-                  {!loadingAudit &&
-                    auditEvents.length ===
-                      0 && (
-                      <div className="empty-state">
-                        No audit events available.
-                      </div>
-                    )}
+                  <details className="story-details">
+                    <summary>
+                      Execution audit timeline
+                    </summary>
 
-                  {!loadingAudit &&
-                    auditEvents.map(
-                      (event) => (
-                        <article
-                          className="chunk-card"
-                          key={event.id}
-                        >
-                          <div className="chunk-card-header">
-                            <strong>
-                              {
-                                event.event_type
-                              }
-                            </strong>
+                    <div className="story-details-body">
+                      {loadingAudit && (
+                        <div className="empty-state">
+                          Loading audit events...
+                        </div>
+                      )}
 
-                            <span>
-                              {formatDate(
-                                event.created_at,
-                              )}
-                            </span>
+                      {!loadingAudit &&
+                        auditEvents.length ===
+                          0 && (
+                          <div className="empty-state">
+                            No audit events available.
                           </div>
+                        )}
 
-                          <div
-                            style={{
-                              padding:
-                                "14px",
-                              borderBottom:
-                                "1px solid #22314a",
-                            }}
-                          >
-                            <strong>
-                              Actor:
-                              {" "}
-                              {
-                                event.actor_ref ??
-                                event.actor_type
-                              }
-                            </strong>
-                          </div>
+                      {!loadingAudit &&
+                        auditEvents.map(
+                          (event) => (
+                            <article
+                              className="story-source-card"
+                              key={event.id}
+                            >
+                              <div>
+                                <strong>
+                                  {humanize(
+                                    event.event_type,
+                                  )}
+                                </strong>
 
-                          <pre>
-                            {formatJson(
-                              event.details,
-                            )}
-                          </pre>
-                        </article>
-                      ),
-                    )}
-                </>
+                                <span>
+                                  {formatDate(
+                                    event.created_at,
+                                  )}
+                                </span>
+                              </div>
+
+                              <p>
+                                Actor:
+                                {" "}
+                                {event.actor_ref ??
+                                  event.actor_type}
+                              </p>
+                            </article>
+                          ),
+                        )}
+                    </div>
+                  </details>
+
+                  <details className="story-details story-raw-details">
+                    <summary>
+                      Developer view: action JSON
+                    </summary>
+
+                    <pre className="story-raw-json">
+                      {JSON.stringify(
+                        selectedAction,
+                        null,
+                        2,
+                      )}
+                    </pre>
+                  </details>
+                </div>
               )}
             </div>
           </div>
