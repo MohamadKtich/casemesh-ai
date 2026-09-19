@@ -1,0 +1,153 @@
+# CaseMesh Bedrock inference validation workflow.
+name: CaseMesh AWS Bedrock Inference Validate
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type VALIDATE_BEDROCK_INFERENCE to confirm one bounded Bedrock inference call'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: casemesh-aws-bedrock-inference-validate
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate one bounded Bedrock inference through GitHub OIDC
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Require main branch and confirmation
+        shell: bash
+        env:
+          VALIDATE_CONFIRMATION: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+
+          test "${GITHUB_REF}" = "refs/heads/main"
+          test "${VALIDATE_CONFIRMATION}" = "VALIDATE_BEDROCK_INFERENCE"
+
+      - name: Validate non-secret AWS configuration
+        shell: bash
+        env:
+          CASEMESH_AWS_ROLE_ARN: ${{ vars.AWS_GITHUB_OIDC_ROLE_ARN }}
+          CASEMESH_AWS_REGION: ${{ vars.AWS_AI_REGION }}
+        run: |
+          set -euo pipefail
+
+          test -n "${CASEMESH_AWS_ROLE_ARN}"
+          test -n "${CASEMESH_AWS_REGION}"
+
+          case "${CASEMESH_AWS_ROLE_ARN}" in
+            arn:aws:iam::*:role/*)
+              ;;
+            *)
+              echo "AWS_GITHUB_OIDC_ROLE_ARN must be a standard AWS IAM role ARN."
+              exit 1
+              ;;
+          esac
+
+          if ! printf '%s' "${CASEMESH_AWS_REGION}" \
+            | grep -Eq '^[a-z]{2}(-gov)?-[a-z0-9-]+-[0-9]+$'; then
+            echo "AWS_AI_REGION has an invalid region format."
+            exit 1
+          fi
+
+      - name: Configure AWS credentials with GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@cbe3b392738ccf3f987d68400dafcf4b0624a56c # v6.2.4
+        with:
+          role-to-assume: ${{ vars.AWS_GITHUB_OIDC_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_AI_REGION }}
+          audience: sts.amazonaws.com
+          role-session-name: casemesh-bedrock-inference-${{ github.run_id }}
+          role-duration-seconds: 900
+          disable-retry: true
+          mask-aws-account-id: true
+          unset-current-credentials: true
+
+      - name: Validate assumed AWS identity
+        shell: bash
+        env:
+          EXPECTED_ROLE_ARN: ${{ vars.AWS_GITHUB_OIDC_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+
+          read -r caller_account caller_arn < <(
+            aws sts get-caller-identity \
+              --query '[Account,Arn]' \
+              --output text
+          )
+
+          expected_account="$(
+            printf '%s' "${EXPECTED_ROLE_ARN}" \
+              | cut -d: -f5
+          )"
+
+          test -n "${caller_account}"
+          test -n "${caller_arn}"
+          test -n "${expected_account}"
+          test "${caller_account}" = "${expected_account}"
+
+          expected_prefix="arn:aws:sts::${expected_account}:assumed-role/"
+
+          case "${caller_arn}" in
+            "${expected_prefix}"*)
+              ;;
+            *)
+              echo "AWS caller identity is not an assumed-role session."
+              exit 1
+              ;;
+          esac
+
+          echo "AWS GitHub OIDC identity validation passed."
+
+      - name: Validate one bounded Nova Micro inference
+        shell: bash
+        env:
+          CASEMESH_AWS_REGION: ${{ vars.AWS_AI_REGION }}
+          CASEMESH_BEDROCK_MODEL_ID: eu.amazon.nova-micro-v1:0
+        run: |
+          set -euo pipefail
+
+          read -r stop_reason input_tokens output_tokens < <(
+            aws bedrock-runtime converse \
+              --region "${CASEMESH_AWS_REGION}" \
+              --model-id "${CASEMESH_BEDROCK_MODEL_ID}" \
+              --messages '[{"role":"user","content":[{"text":"Return exactly the text CASEMESH_OK."}]}]' \
+              --inference-config '{"maxTokens":16,"temperature":0}' \
+              --query '[stopReason,usage.inputTokens,usage.outputTokens]' \
+              --output text \
+              --no-cli-pager \
+              --cli-connect-timeout 5 \
+              --cli-read-timeout 30
+          )
+
+          test "${stop_reason}" = "end_turn"
+
+          if ! printf '%s' "${input_tokens}" | grep -Eq '^[0-9]+$'; then
+            echo "Bedrock input token count must be a non-negative integer."
+            exit 1
+          fi
+
+          if ! printf '%s' "${output_tokens}" | grep -Eq '^[0-9]+$'; then
+            echo "Bedrock output token count must be a non-negative integer."
+            exit 1
+          fi
+
+          if [ "${output_tokens}" -lt 1 ] || [ "${output_tokens}" -gt 16 ]; then
+            echo "Bedrock output token count is outside the validation bound."
+            exit 1
+          fi
+
+          echo "AWS Bedrock bounded inference validation passed."
+          echo "MODEL_ID=${CASEMESH_BEDROCK_MODEL_ID}"
+          echo "INPUT_TOKENS=${input_tokens}"
+          echo "OUTPUT_TOKENS=${output_tokens}"
+          echo "MODEL_RESPONSE_LOGGED=NO"

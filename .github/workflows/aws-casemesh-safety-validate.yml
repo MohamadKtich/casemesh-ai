@@ -1,0 +1,99 @@
+name: CaseMesh AWS Safety Validate
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type VALIDATE_CASEMESH_AWS_SAFETY to run offline fail-safe validation'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: casemesh-aws-safety-validate
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate CaseMesh AWS fail-safe boundaries offline
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+      AWS_EC2_METADATA_DISABLED: "true"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Require main branch and confirmation
+        shell: bash
+        env:
+          VALIDATE_CONFIRMATION: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF}" = "refs/heads/main"
+          test "${VALIDATE_CONFIRMATION}" = "VALIDATE_CASEMESH_AWS_SAFETY"
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: apps/api/pyproject.toml
+
+      - name: Install CaseMesh API dependencies
+        working-directory: apps/api
+        run: python -m pip install -e ".[dev]"
+
+      - name: Verify no AWS credentials are present
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "${AWS_ACCESS_KEY_ID:-}"
+          test -z "${AWS_SECRET_ACCESS_KEY:-}"
+          test -z "${AWS_SESSION_TOKEN:-}"
+          echo "AWS_CREDENTIALS_PRESENT=NO"
+          echo "REAL_AWS_CALLS=NONE"
+
+      - name: Run targeted fail-safe regression suite
+        working-directory: apps/api
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          python -m pytest -q \
+            tests/test_second_review_orchestration.py \
+            tests/test_second_review_policy_bridge.py \
+            tests/test_second_review_guardrail_orchestration.py \
+            tests/test_second_review_budget.py \
+            tests/test_investigation_risk_triggers.py \
+            tests/test_action_risk_trigger_integration.py \
+            tests/test_policy_guardrails.py \
+            tests/test_cross_cloud_failure_alerts.py \
+            tests/test_aws_bedrock_second_review_security.py \
+            tests/test_investigation_safe_summaries.py
+
+      - name: Emit phase validation markers
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "PHASE_37O_6=PASS"
+          echo "PROVIDER_FAILURE_FAILS_CLOSED=VERIFIED"
+          echo "SECOND_REVIEW_DISAGREEMENT_HUMAN_ROUTE=VERIFIED"
+          echo "GUARDRAIL_FAILURE_FAILS_CLOSED=VERIFIED"
+          echo "SECOND_REVIEW_BUDGET_BOUNDARY=VERIFIED"
+          echo "HIGH_RISK_ACTION_APPROVAL=VERIFIED"
+          echo "FINANCIAL_ACTION_APPROVAL=VERIFIED"
+          echo "POLICY_GUARD_AUTHORITY=VERIFIED"
+          echo "CROSS_CLOUD_FAILURE_ISOLATION=VERIFIED"
+          echo "ALERT_FAILURE_ISOLATION=VERIFIED"
+          echo "RAW_INFRASTRUCTURE_MESSAGE_LEAK=PREVENTED"
+          echo "REAL_AWS_CALLS=NONE"
+          echo "NEXT=PHASE_37O_7_FINAL_FULL_REGRESSION"

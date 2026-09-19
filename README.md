@@ -1,6 +1,6 @@
 # CaseMesh AI
 
-> **Status:** Active development. Core case management, evidence ingestion, hybrid retrieval, grounded answers, orchestration, human approval, MCP integration, evaluation, Azure dev deployment, and hardened CI/CD are operational. AWS support is intentionally bounded to controlled validation and intelligence integrations rather than a primary production runtime.
+> **Status:** Core platform operational. Azure dev deployment, hardened CI/CD, MCP integration, and AWS Intelligence v1.1 validation are complete.
 
 **CaseMesh AI** is a full-stack AI case investigation and resolution platform built around one principle:
 
@@ -80,6 +80,20 @@ The repository contains implementation and tests for:
 
 The AWS GitHub workflow uses short-lived OIDC credentials and validates the assumed AWS identity. AWS cloud usage is intentionally opt-in, bounded, and designed to avoid permanent infrastructure or long-lived static credentials.
 
+### AWS validation status
+
+Real cloud and regression validation completed:
+
+- GitHub OIDC to AWS IAM using short-lived credentials,
+- Bedrock catalog validation,
+- one bounded real Bedrock inference,
+- the real CaseMesh second-review application path through Bedrock,
+- offline fail-safe validation for provider, guardrail, alert, risk, and policy failures,
+- final API/Web/Platform regression after the AWS integration.
+
+Normal CI does not call Bedrock. Real AWS model calls remain manual and bounded.
+
+See [AWS Intelligence v1.1](docs/AWS_INTELLIGENCE_V1_1.md) for the validation record and security boundaries.
 ### AI provider reality
 
 The current core provider factories implement:

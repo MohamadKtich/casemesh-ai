@@ -38,13 +38,22 @@ FastAPI / Python 3.12
     +--> Agentic investigation workflows
     +--> Deterministic tools
     +--> MCP server and client
-    +--> Controlled business actions
+    +--> PolicyGuard + controlled business actions
+    |
+    +--> Optional AWS Intelligence v1.1
+    |       |
+    |       +--> S3 temporary staging
+    |       +--> Textract document intelligence
+    |       +--> SQS asynchronous completion
+    |       +--> Bedrock second review
+    |       +--> Bedrock Guardrails
+    |       +--> SNS escalation alerts
     |
     v
 PostgreSQL + pgvector
 ```
 
-The frontend and backend are deployed independently. This allows the web application and API to evolve, validate, and roll back without forcing a single deployment unit.
+Azure remains the current application hosting environment. AWS is a specialized intelligence extension and does not replace the core application authority model.
 
 ## 3. Application layers
 
@@ -123,30 +132,24 @@ CaseMesh uses both semantic and lexical retrieval.
 ```text
 Query
   |
-  +--> Semantic Retrieval
-  |       |
-  |       v
-  |    pgvector
+  +--> Semantic Retrieval --> pgvector
   |
-  +--> Lexical Retrieval
-          |
-          v
-  PostgreSQL Full-Text Search
-          |
-          v
-  Reciprocal Rank Fusion (RRF)
-          |
-          v
-    Ranked Evidence
-          |
-          v
-   Grounded Context
-          |
-          v
-      AI Synthesis
+  +--> Lexical Retrieval --> PostgreSQL Full-Text Search
+  |
+  v
+Reciprocal Rank Fusion (RRF)
+  |
+  v
+Ranked Evidence
+  |
+  v
+Grounded Context
+  |
+  v
+AI Synthesis
 ```
 
-The retrieval design is intended to preserve source metadata so generated findings can remain traceable to evidence.
+The retrieval design preserves source metadata so generated findings can remain traceable to evidence.
 
 The model does not replace retrieval. Retrieval supplies grounded context to the model.
 
@@ -162,6 +165,7 @@ The architecture separates concerns such as:
 - policy and risk reasoning,
 - deterministic calculations,
 - resolution generation,
+- human review,
 - controlled action execution.
 
 This design reduces unnecessary model calls and keeps critical behavior observable and testable.
@@ -193,7 +197,9 @@ The current design includes:
 - execution modes,
 - live-action allowlists,
 - authenticated MCP access,
-- deterministic validation before controlled actions.
+- deterministic validation before controlled actions,
+- human approval for high-impact operations,
+- PolicyGuard authority that cannot be downgraded by model output.
 
 The architecture is designed so model output alone does not grant permission to perform a sensitive business action.
 
@@ -219,16 +225,132 @@ Embedding and generation behavior is configured through application-level provid
 
 This keeps the system from depending directly on one model vendor throughout the codebase.
 
-The provider abstraction supports the project's goals of:
+The provider abstraction supports:
 
 - local-first development,
-- replaceable AI providers,
+- replaceable model providers,
 - cloud validation when useful,
-- cost-aware experimentation.
+- cost-aware experimentation,
+- optional cross-cloud second review.
 
 Provider-specific credentials are not committed to source control.
 
-## 11. Authentication architecture
+## 11. AWS Intelligence v1.1
+
+AWS Intelligence v1.1 is an opt-in cross-cloud intelligence layer that enriches or reviews CaseMesh investigations without taking ownership of business authorization.
+
+### 11.1 Gateway and client boundary
+
+The AWS integration is separated behind application-level gateway/client construction rather than spreading direct boto3 calls through workflow code.
+
+Capabilities include:
+
+- client factory behavior,
+- region-aware construction,
+- request-timeout controls,
+- mock/offline mode,
+- SDK mode for targeted real validation.
+
+### 11.2 Temporary S3 staging
+
+Temporary evidence staging supports bounded document workflows with lifecycle-oriented cleanup behavior.
+
+Staging is treated as an integration boundary, not as the authoritative CaseMesh evidence store.
+
+### 11.3 Textract document intelligence
+
+Textract adapters support document extraction, pagination, async completion, and failure normalization.
+
+Document-intelligence failures are isolated from the rest of the investigation workflow and remain subject to application-level handling.
+
+### 11.4 SQS asynchronous completion
+
+SQS supports asynchronous processing and completion flows.
+
+The implementation includes idempotency, replay protection, message-claim behavior, and provider-failure handling so failed work is not acknowledged incorrectly.
+
+### 11.5 Bedrock second review
+
+Bedrock can provide an independent structured review of CaseMesh findings.
+
+```text
+Investigation findings
+        |
+        v
+Second-review gate
+        |
+        v
+AWS Bedrock provider
+        |
+        v
+Structured review result
+        |
+        +--> continue
+        |
+        +--> human_review
+```
+
+The review is advisory. It cannot authorize a blocked action or weaken a PolicyGuard decision.
+
+The second-review budget is explicitly bounded to avoid uncontrolled repeat calls.
+
+### 11.6 Bedrock Guardrails
+
+Guardrail evaluation can fail closed and can force review/escalation behavior.
+
+A guardrail failure is treated as a provider-boundary failure rather than silently ignored.
+
+### 11.7 Risk triggers and SNS alerts
+
+Risk-trigger logic can emit escalation events. SNS alert delivery is isolated so alert transport failure does not mutate approval state or recursively create new cross-cloud failures.
+
+### 11.8 Failure isolation
+
+The integration explicitly handles:
+
+- provider failure,
+- timeout,
+- review-budget exhaustion,
+- replay/idempotency behavior,
+- guardrail block/failure,
+- cross-cloud failure signaling,
+- alert transport failure,
+- malformed metadata,
+- safe API summaries,
+- federated identity refresh.
+
+Cross-cloud intelligence should fail closed and route to human review where necessary rather than breaking the investigation workflow.
+
+## 12. AWS identity architecture
+
+### GitHub Actions to AWS
+
+Manual validation uses GitHub OIDC and AWS STS.
+
+```text
+GitHub Actions
+    |
+    | OIDC
+    v
+AWS IAM OIDC provider
+    |
+    v
+CaseMeshGitHubOIDC role
+    |
+    | AssumeRoleWithWebIdentity
+    v
+Short-lived AWS credentials
+```
+
+Static AWS access keys are not required for the validation workflows.
+
+The trust relationship is restricted to the CaseMesh repository and expected branch context.
+
+### Runtime/federated identity support
+
+The codebase also contains federated credential support for short-lived runtime identity paths, including refresh behavior. Long-lived credential persistence is intentionally avoided.
+
+## 13. Authentication architecture
 
 The deployed application uses Microsoft Entra ID.
 
@@ -256,7 +378,7 @@ Azure Container Apps authentication protects API access.
 
 Operational health endpoints remain available for readiness verification.
 
-## 12. Container architecture
+## 14. Container architecture
 
 The API is packaged as a Docker container.
 
@@ -270,7 +392,7 @@ Security-relevant container properties include:
 
 Platform CI verifies the expected runtime user and working directory.
 
-## 13. Azure infrastructure
+## 15. Azure infrastructure
 
 The Azure dev environment currently uses:
 
@@ -283,7 +405,7 @@ The Azure Container App is configured with a small dev footprint and scale-to-ze
 
 The Static Web App uses the Free tier for the current dev/portfolio environment.
 
-## 14. Infrastructure as Code
+## 16. Infrastructure as Code
 
 Azure infrastructure is defined using Bicep.
 
@@ -301,9 +423,9 @@ The container image is intentionally supplied by the deployment caller rather th
 
 This keeps runtime image ownership with the deployment workflow.
 
-## 15. CI architecture
+## 17. CI architecture
 
-CaseMesh separates quality checks into three workflows.
+CaseMesh separates quality checks into three automatic workflows.
 
 ### API CI
 
@@ -339,9 +461,25 @@ Validates:
 - Azure CLI availability,
 - Bicep compilation.
 
-## 16. CI/CD supply-chain controls
+## 18. Manual validation architecture
 
-The GitHub Actions configuration is hardened with:
+Real cloud checks are deliberately manual rather than part of normal CI.
+
+AWS validation workflows include:
+
+- GitHub OIDC identity validation,
+- Bedrock catalog validation,
+- bounded provider-level Bedrock inference,
+- real CaseMesh second-review application-path validation,
+- offline AWS safety/failure validation.
+
+A final full-regression workflow re-runs the complete API, Web, and Platform gates without AWS credentials or real AWS calls.
+
+This keeps the repository reproducible while preventing every source change from consuming cloud resources or model tokens.
+
+## 19. CI/CD supply-chain controls
+
+GitHub Actions use:
 
 - minimum required workflow permissions,
 - external Actions pinned to full immutable commit SHAs,
@@ -349,13 +487,12 @@ The GitHub Actions configuration is hardened with:
 - separate CI and deployment workflows,
 - manual deployment confirmation,
 - restricted package publishing permissions,
-- OIDC-based Azure authentication.
+- OIDC-based Azure authentication,
+- OIDC-based AWS validation authentication.
 
-CI workflows do not receive deployment permissions.
+Normal CI workflows do not receive cloud deployment or AWS inference permissions.
 
-The API deployment workflow receives only the additional permissions required for GHCR publishing and Azure OIDC.
-
-## 17. API deployment architecture
+## 20. API deployment architecture
 
 API deployment is manual.
 
@@ -396,67 +533,27 @@ Images are published using immutable references:
 ghcr.io/mohamadktich/casemesh-api:<git-sha>
 ```
 
-The workflow verifies that the exact expected image became the exact ready revision.
+## 21. Frontend deployment architecture
 
-If deployment verification fails after the update, the workflow attempts to restore the previous image and verifies the rollback revision.
+Frontend deployment is manual and validates the production build before publication to Azure Static Web Apps.
 
-## 18. Frontend deployment architecture
+The deployment verifies:
 
-Frontend deployment is also manual.
+- required configuration,
+- `npm ci`,
+- linting,
+- production Vite build,
+- compiled API endpoint,
+- successful HTTPS response after deployment.
 
-```text
-Manual GitHub Actions dispatch
-        |
-        | require main + DEPLOY confirmation
-        v
-Validate deployment configuration
-        |
-        v
-npm ci
-        |
-        v
-Oxlint
-        |
-        v
-Production Vite build
-        |
-        v
-Verify compiled API endpoint
-        |
-        v
-Deploy prebuilt output
-        |
-        v
-Azure Static Web Apps
-        |
-        v
-HTTP production verification
-```
-
-The frontend deployment does not rely on Azure to perform an uncontrolled application build.
-
-The workflow builds the application first, validates it, and deploys the prepared output.
-
-## 19. Identity between GitHub and Azure
-
-Azure deployment authentication uses GitHub OIDC federation.
-
-This avoids storing an Azure client secret in the GitHub repository.
-
-The deployment identity is scoped to the Azure dev resource group and is used by the API deployment workflow.
-
-Repository variables store non-secret Azure identifiers.
-
-Sensitive deployment tokens remain GitHub Secrets.
-
-## 20. Runtime verification
+## 22. Runtime verification
 
 Deployment success is not defined only as "the command completed."
 
 The API deployment verifies:
 
 - a new revision was created,
-- the new revision is the ready revision,
+- the new revision is ready,
 - the revision uses the expected immutable image,
 - `/health/ready` returns successfully,
 - the database readiness state is connected.
@@ -468,7 +565,7 @@ The frontend deployment verifies:
 - the deployed site responds over HTTPS,
 - the returned page contains the expected React root element.
 
-## 21. Security principles
+## 23. Security principles
 
 CaseMesh applies layered security controls:
 
@@ -482,12 +579,13 @@ CaseMesh applies layered security controls:
 - least-privilege GitHub Actions permissions,
 - SHA-pinned Actions,
 - disabled checkout credential persistence,
-- OIDC instead of a stored Azure client secret,
+- OIDC instead of stored Azure or AWS long-lived credentials,
 - controlled MCP authentication,
 - explicit action-execution controls,
+- bounded AI review budgets,
 - deployment verification and rollback.
 
-## 22. Zero-cost-first strategy
+## 24. Zero-cost-first strategy
 
 The architecture deliberately avoids making paid cloud infrastructure a requirement for normal development.
 
@@ -499,11 +597,13 @@ The project favors:
 - scale-to-zero compute,
 - small dev resource limits,
 - targeted cloud validation,
+- mock/contract testing for provider failures,
+- bounded real model calls,
 - manual deployment instead of deploy-on-every-commit.
 
 Cloud usage exists to prove real integration and deployment behavior, not to create a permanent cost dependency.
 
-## 23. Current dev deployment
+## 25. Current dev deployment
 
 Frontend:
 
@@ -525,9 +625,24 @@ https://casemesh-api-dev.lemonwater-0bb11448.uaenorth.azurecontainerapps.io/heal
 
 This environment is intended for development validation and portfolio demonstration. It is not represented as a production SLA environment.
 
-## 24. Architectural direction
+## 26. AWS validation status
 
-Future work can extend the system with additional provider integrations, evaluation, observability, FinOps, and portfolio release assets without changing the core architectural boundaries.
+AWS Intelligence v1.1 has completed:
+
+```text
+GitHub OIDC identity validation          PASS
+Bedrock catalog validation               PASS
+Bounded real Bedrock inference           PASS
+Real CaseMesh second-review path         PASS
+Offline fail-safe regression             PASS
+Final API/Web/Platform regression         PASS
+```
+
+The real CaseMesh application-path validation proved that CaseMesh itself can construct the AWS Bedrock review provider, execute a structured second review, preserve review-budget controls, and return a safe application route without executing privileged business actions.
+
+## 27. Architectural direction
+
+Future work can extend evaluation, observability, FinOps, security automation, and portfolio release assets without changing the core architectural boundaries.
 
 The most important constraint remains unchanged:
 
