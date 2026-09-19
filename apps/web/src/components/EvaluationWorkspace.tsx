@@ -357,7 +357,7 @@ function EvaluationWorkspace() {
             label: "DECISION QUALITY",
             title: "How well did the benchmark match expected outcomes?",
             summary:
-              \`Decision accuracy is \${percent(summary.metrics.decision_accuracy)}, human-review routing is \${percent(summary.metrics.human_review_accuracy)}, and credit accuracy is \${percent(summary.metrics.credit_accuracy)}.\`,
+              `Decision accuracy is ${percent(summary.metrics.decision_accuracy)}, human-review routing is ${percent(summary.metrics.human_review_accuracy)}, and credit accuracy is ${percent(summary.metrics.credit_accuracy)}.`,
             note:
               "These scores describe this deterministic benchmark only. They do not claim model generalization accuracy.",
           }
@@ -368,7 +368,7 @@ function EvaluationWorkspace() {
             label: "REPEATABILITY",
             title: "What does a stable baseline actually mean?",
             summary:
-              \`CaseMesh repeated the benchmark \${stability.repeated_runs} times and produced \${stability.unique_result_hashes} unique result-hash pattern(s).\`,
+              `CaseMesh repeated the benchmark ${stability.repeated_runs} times and produced ${stability.unique_result_hashes} unique result-hash pattern(s).`,
             note:
               stability.stable
                 ? "The same benchmark inputs produced consistent outputs across repeated runs."
@@ -383,7 +383,7 @@ function EvaluationWorkspace() {
             summary:
               failures.failed_cases === 0
                 ? "No failing benchmark cases are currently reported."
-                : \`\${failures.failed_cases} benchmark case(s) failed and require review.\`,
+                : `${failures.failed_cases} benchmark case(s) failed and require review.`,
             note:
               "Duplicate records measure repeatability, not independent evidence. A clean deterministic run is useful, but it is not proof of broad model quality.",
           }
@@ -393,9 +393,9 @@ function EvaluationWorkspace() {
             label: "DATASET RECORDS",
             title: "Why are there more records than scenarios?",
             summary:
-              \`The benchmark contains \${summary.dataset.total_records} total records.\`,
+              `The benchmark contains ${summary.dataset.total_records} total records.`,
             note:
-              \`\${summary.dataset.duplicate_records} records are repetitions used to test deterministic behavior across the same scenarios.\`,
+              `${summary.dataset.duplicate_records} records are repetitions used to test deterministic behavior across the same scenarios.`,
           }
 
         case "unique":
@@ -404,7 +404,7 @@ function EvaluationWorkspace() {
             label: "UNIQUE SCENARIOS",
             title: "What is the independent scenario count?",
             summary:
-              \`\${summary.dataset.unique_records} of \${summary.dataset.total_records} records are unique scenarios, which is \${Math.round(uniqueShare)}% of the dataset.\`,
+              `${summary.dataset.unique_records} of ${summary.dataset.total_records} records are unique scenarios, which is ${Math.round(uniqueShare)}% of the dataset.`,
             note:
               "This is the more meaningful count when discussing scenario diversity.",
           }
@@ -414,7 +414,7 @@ function EvaluationWorkspace() {
             label: "DUPLICATE RECORDS",
             title: "Why does CaseMesh intentionally repeat records?",
             summary:
-              \`\${summary.dataset.duplicate_records} repeated records are included in the benchmark.\`,
+              `${summary.dataset.duplicate_records} repeated records are included in the benchmark.`,
             note:
               "They test whether the system remains deterministic when the same scenario is executed repeatedly.",
           }
@@ -424,7 +424,7 @@ function EvaluationWorkspace() {
             label: "DECISION ACCURACY",
             title: "Did CaseMesh choose the expected business decision?",
             summary:
-              \`Decision accuracy is \${percent(summary.metrics.decision_accuracy)} for this benchmark.\`,
+              `Decision accuracy is ${percent(summary.metrics.decision_accuracy)} for this benchmark.`,
             note:
               "This compares actual benchmark decisions with the expected deterministic outcomes.",
           }
@@ -434,7 +434,7 @@ function EvaluationWorkspace() {
             label: "CREDIT ACCURACY",
             title: "Did resolved credit cases match expected values?",
             summary:
-              \`Credit accuracy is \${percent(summary.metrics.credit_accuracy)} across \${summary.metrics.resolved_credit_cases} resolved credit cases.\`,
+              `Credit accuracy is ${percent(summary.metrics.credit_accuracy)} across ${summary.metrics.resolved_credit_cases} resolved credit cases.`,
             note:
               "This metric applies only to scenarios where credit resolution is part of the expected outcome.",
           }
@@ -444,7 +444,7 @@ function EvaluationWorkspace() {
             label: "HUMAN REVIEW ROUTING",
             title: "Did governance route cases to people correctly?",
             summary:
-              \`Human-review routing accuracy is \${percent(summary.metrics.human_review_accuracy)}.\`,
+              `Human-review routing accuracy is ${percent(summary.metrics.human_review_accuracy)}.`,
             note:
               "This verifies whether the benchmark expected human intervention and whether CaseMesh routed the case accordingly.",
           }
@@ -455,7 +455,7 @@ function EvaluationWorkspace() {
             label: "SCIENTIFIC SCOPE",
             title: "What does this dashboard prove, and what does it not prove?",
             summary:
-              \`CaseMesh evaluates \${summary.dataset.unique_records} unique scenarios across \${summary.dataset.total_records} total records.\`,
+              `CaseMesh evaluates ${summary.dataset.unique_records} unique scenarios across ${summary.dataset.total_records} total records.`,
             note:
               "The dashboard demonstrates deterministic SLA behavior, routing, and repeatability. It should not be presented as independent model-generalization evidence.",
           }
@@ -739,7 +739,7 @@ function EvaluationWorkspace() {
           detail={
             `${summary.metrics.resolved_credit_cases} resolved credit cases`
           }
-        onOpen={() => setSelectedInsight("credit")}
+          onOpen={() => setSelectedInsight("credit")}
         />
 
         <AccuracyGauge
