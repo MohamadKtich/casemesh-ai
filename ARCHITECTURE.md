@@ -134,16 +134,16 @@ Query
   PostgreSQL Full-Text Search
           |
           v
-       Merge
+  Reciprocal Rank Fusion (RRF)
           |
           v
-       Rerank
+    Ranked Evidence
           |
           v
-  Grounded Context
+   Grounded Context
           |
           v
-     AI Synthesis
+      AI Synthesis
 ```
 
 The retrieval design is intended to preserve source metadata so generated findings can remain traceable to evidence.
