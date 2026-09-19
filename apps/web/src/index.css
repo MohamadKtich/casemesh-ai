@@ -14,14 +14,9 @@
   background: #070b14;
 }
 
-:root[data-theme="light"] {
-  color-scheme: light;
-  background: #f4f6fb;
-}
-
 html {
   min-height: 100%;
-  background: inherit;
+  background: #070b14;
   scroll-behavior: smooth;
 }
 
@@ -29,7 +24,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: inherit;
+  background: #070b14;
 }
 
 button {
