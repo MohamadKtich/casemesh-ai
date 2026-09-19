@@ -3498,8 +3498,7 @@ textarea {
 .view-stage {
   animation:
     cm-view-enter 360ms
-    cubic-bezier(0.22, 1, 0.36, 1)
-    both;
+    cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes cm-view-enter {
