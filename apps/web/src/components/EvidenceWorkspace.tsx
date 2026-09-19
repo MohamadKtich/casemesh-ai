@@ -1243,27 +1243,61 @@ function EvidenceWorkspace({
 
                   {!loadingChunks &&
                     chunks.map(
-                      (chunk) => (
+                      (chunk, index) => (
                         <article
-                          className="chunk-card"
+                          className="evidence-excerpt-card"
                           key={chunk.id}
                         >
-                          <div className="chunk-card-header">
-                            <strong>
-                              Chunk #
-                              {chunk.chunk_index}
-                            </strong>
+                          <div className="evidence-excerpt-heading">
+                            <div>
+                              <span>
+                                Evidence excerpt
+                              </span>
 
-                            <span>
-                              {chunk.char_count}
-                              {" "}
-                              characters
+                              <strong>
+                                Source passage
+                                {" "}
+                                {index + 1}
+                              </strong>
+                            </div>
+
+                            <span className="story-pill story-tone-good">
+                              Readable
                             </span>
                           </div>
 
-                          <pre>
+                          <p>
                             {chunk.content}
-                          </pre>
+                          </p>
+
+                          <details className="evidence-technical-details">
+                            <summary>
+                              Technical details
+                            </summary>
+
+                            <div className="evidence-technical-grid">
+                              <div>
+                                <span>Chunk</span>
+                                <strong>
+                                  #{chunk.chunk_index}
+                                </strong>
+                              </div>
+
+                              <div>
+                                <span>Characters</span>
+                                <strong>
+                                  {chunk.char_count}
+                                </strong>
+                              </div>
+
+                              <div>
+                                <span>Chunk ID</span>
+                                <strong>
+                                  {chunk.id}
+                                </strong>
+                              </div>
+                            </div>
+                          </details>
                         </article>
                       ),
                     )}
