@@ -4,6 +4,8 @@ import {
   useState,
 } from "react"
 
+import { createPortal } from "react-dom"
+
 import {
   getEvaluationCases,
   getEvaluationFailures,
@@ -1138,8 +1140,9 @@ function EvaluationWorkspace() {
         </div>
       </section>
 
-      {insightOpen && (
-        <>
+      {insightOpen &&
+        createPortal(
+          <>
           <button
             type="button"
             className="evaluation-insight-backdrop"
@@ -1214,8 +1217,9 @@ function EvaluationWorkspace() {
               </div>
             </div>
           </aside>
-        </>
-      )}
+        </>,
+          document.body,
+        )}
 
     </section>
   )
