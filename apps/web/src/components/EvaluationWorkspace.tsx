@@ -20,7 +20,24 @@ interface AccuracyGaugeProps {
   title: string
   value: number
   detail: string
+  onOpen: () => void
 }
+
+
+type InsightKey =
+  | "scope"
+  | "quality"
+  | "stability"
+  | "attention"
+  | "records"
+  | "unique"
+  | "duplicates"
+  | "failures"
+  | "decision"
+  | "credit"
+  | "review"
+  | "composition"
+  | "repeatability"
 
 
 function percent(
@@ -56,6 +73,7 @@ function AccuracyGauge({
   title,
   value,
   detail,
+  onOpen,
 }: AccuracyGaugeProps) {
   const radius = 48
   const circumference =
@@ -74,7 +92,11 @@ function AccuracyGauge({
     circumference * progress
 
   return (
-    <article className="evaluation-gauge-card">
+    <button
+      type="button"
+      className="evaluation-gauge-card evaluation-clickable-card"
+      onClick={onOpen}
+    >
       <div className="evaluation-gauge">
         <svg
           viewBox="0 0 120 120"
@@ -108,7 +130,7 @@ function AccuracyGauge({
         <strong>{title}</strong>
         <span>{detail}</span>
       </div>
-    </article>
+    </button>
   )
 }
 
@@ -154,6 +176,14 @@ function EvaluationWorkspace() {
     setError,
   ] = useState<string | null>(
     null,
+  )
+
+
+  const [
+    selectedInsight,
+    setSelectedInsight,
+  ] = useState<InsightKey>(
+    "scope",
   )
 
 
@@ -319,6 +349,120 @@ function EvaluationWorkspace() {
       : 0
 
 
+  const insight =
+    (() => {
+      switch (selectedInsight) {
+        case "quality":
+          return {
+            label: "DECISION QUALITY",
+            title: "How well did the benchmark match expected outcomes?",
+            summary:
+              \`Decision accuracy is \${percent(summary.metrics.decision_accuracy)}, human-review routing is \${percent(summary.metrics.human_review_accuracy)}, and credit accuracy is \${percent(summary.metrics.credit_accuracy)}.\`,
+            note:
+              "These scores describe this deterministic benchmark only. They do not claim model generalization accuracy.",
+          }
+
+        case "stability":
+        case "repeatability":
+          return {
+            label: "REPEATABILITY",
+            title: "What does a stable baseline actually mean?",
+            summary:
+              \`CaseMesh repeated the benchmark \${stability.repeated_runs} times and produced \${stability.unique_result_hashes} unique result-hash pattern(s).\`,
+            note:
+              stability.stable
+                ? "The same benchmark inputs produced consistent outputs across repeated runs."
+                : "The repeated benchmark produced inconsistent outputs and should be investigated.",
+          }
+
+        case "attention":
+        case "failures":
+          return {
+            label: "ATTENTION",
+            title: "What should an operator review before trusting the benchmark?",
+            summary:
+              failures.failed_cases === 0
+                ? "No failing benchmark cases are currently reported."
+                : \`\${failures.failed_cases} benchmark case(s) failed and require review.\`,
+            note:
+              "Duplicate records measure repeatability, not independent evidence. A clean deterministic run is useful, but it is not proof of broad model quality.",
+          }
+
+        case "records":
+          return {
+            label: "DATASET RECORDS",
+            title: "Why are there more records than scenarios?",
+            summary:
+              \`The benchmark contains \${summary.dataset.total_records} total records.\`,
+            note:
+              \`\${summary.dataset.duplicate_records} records are repetitions used to test deterministic behavior across the same scenarios.\`,
+          }
+
+        case "unique":
+        case "composition":
+          return {
+            label: "UNIQUE SCENARIOS",
+            title: "What is the independent scenario count?",
+            summary:
+              \`\${summary.dataset.unique_records} of \${summary.dataset.total_records} records are unique scenarios, which is \${Math.round(uniqueShare)}% of the dataset.\`,
+            note:
+              "This is the more meaningful count when discussing scenario diversity.",
+          }
+
+        case "duplicates":
+          return {
+            label: "DUPLICATE RECORDS",
+            title: "Why does CaseMesh intentionally repeat records?",
+            summary:
+              \`\${summary.dataset.duplicate_records} repeated records are included in the benchmark.\`,
+            note:
+              "They test whether the system remains deterministic when the same scenario is executed repeatedly.",
+          }
+
+        case "decision":
+          return {
+            label: "DECISION ACCURACY",
+            title: "Did CaseMesh choose the expected business decision?",
+            summary:
+              \`Decision accuracy is \${percent(summary.metrics.decision_accuracy)} for this benchmark.\`,
+            note:
+              "This compares actual benchmark decisions with the expected deterministic outcomes.",
+          }
+
+        case "credit":
+          return {
+            label: "CREDIT ACCURACY",
+            title: "Did resolved credit cases match expected values?",
+            summary:
+              \`Credit accuracy is \${percent(summary.metrics.credit_accuracy)} across \${summary.metrics.resolved_credit_cases} resolved credit cases.\`,
+            note:
+              "This metric applies only to scenarios where credit resolution is part of the expected outcome.",
+          }
+
+        case "review":
+          return {
+            label: "HUMAN REVIEW ROUTING",
+            title: "Did governance route cases to people correctly?",
+            summary:
+              \`Human-review routing accuracy is \${percent(summary.metrics.human_review_accuracy)}.\`,
+            note:
+              "This verifies whether the benchmark expected human intervention and whether CaseMesh routed the case accordingly.",
+          }
+
+        case "scope":
+        default:
+          return {
+            label: "SCIENTIFIC SCOPE",
+            title: "What does this dashboard prove, and what does it not prove?",
+            summary:
+              \`CaseMesh evaluates \${summary.dataset.unique_records} unique scenarios across \${summary.dataset.total_records} total records.\`,
+            note:
+              "The dashboard demonstrates deterministic SLA behavior, routing, and repeatability. It should not be presented as independent model-generalization evidence.",
+          }
+      }
+    })()
+
+
   return (
     <section className="evaluation-workspace">
 
@@ -372,6 +516,42 @@ function EvaluationWorkspace() {
       </section>
 
 
+      <section className="evaluation-scope-warning evaluation-dashboard-hint">
+        <strong>
+          Interactive dashboard
+        </strong>
+
+        <span>
+          Click the cards and gauges below to open a clearer explanation of what each metric means.
+        </span>
+      </section>
+
+      <section className="evaluation-insight-panel">
+        <div className="evaluation-insight-heading">
+          <div>
+            <div className="section-label">
+              {insight.label}
+            </div>
+
+            <h3>
+              {insight.title}
+            </h3>
+          </div>
+
+          <span className="evaluation-insight-badge">
+            DETAILS
+          </span>
+        </div>
+
+        <p>
+          {insight.summary}
+        </p>
+
+        <div className="evaluation-insight-note">
+          {insight.note}
+        </div>
+      </section>
+
       <section className="evaluation-scope-warning">
         <strong>
           Scientific scope
@@ -392,7 +572,7 @@ function EvaluationWorkspace() {
 
 
       <section className="evaluation-story-grid">
-        <article className="story-card story-card-accent">
+        <button type="button" className="story-card story-card-accent evaluation-clickable-card" onClick={() => setSelectedInsight("scope")}>
           <div className="story-step">
             01
           </div>
@@ -421,9 +601,9 @@ function EvaluationWorkspace() {
             {" "}
             total records.
           </p>
-        </article>
+        </button>
 
-        <article className="story-card">
+        <button type="button" className="story-card evaluation-clickable-card" onClick={() => setSelectedInsight("quality")}>
           <div className="story-step">
             02
           </div>
@@ -457,9 +637,9 @@ function EvaluationWorkspace() {
             )}
             .
           </p>
-        </article>
+        </button>
 
-        <article className="story-card">
+        <button type="button" className="story-card evaluation-clickable-card" onClick={() => setSelectedInsight("stability")}>
           <div className="story-step">
             03
           </div>
@@ -477,9 +657,9 @@ function EvaluationWorkspace() {
               ? `The baseline stayed stable across ${stability.repeated_runs} repeated runs with ${stability.unique_result_hashes} result hash pattern.`
               : "The repeated runs produced instability that should be investigated before relying on this baseline."}
           </p>
-        </article>
+        </button>
 
-        <article className="story-card story-next-action">
+        <button type="button" className="story-card story-next-action evaluation-clickable-card" onClick={() => setSelectedInsight("attention")}>
           <div className="story-step">
             04
           </div>
@@ -497,45 +677,45 @@ function EvaluationWorkspace() {
               ? "No failing benchmark cases are currently reported. Duplicate records still measure repeatability, not independent model generalization."
               : `${failures.failed_cases} benchmark case(s) failed. Review the failure evidence before treating the baseline as ready.`}
           </p>
-        </article>
+        </button>
       </section>
 
       <section className="evaluation-summary-strip">
-        <article>
+        <button type="button" className="evaluation-summary-card evaluation-clickable-card" onClick={() => setSelectedInsight("records")}>
           <span>
             DATASET RECORDS
           </span>
           <strong>
             {summary.dataset.total_records}
           </strong>
-        </article>
+        </button>
 
-        <article>
+        <button type="button" className="evaluation-summary-card evaluation-clickable-card" onClick={() => setSelectedInsight("unique")}>
           <span>
             UNIQUE SCENARIOS
           </span>
           <strong>
             {summary.dataset.unique_records}
           </strong>
-        </article>
+        </button>
 
-        <article>
+        <button type="button" className="evaluation-summary-card evaluation-clickable-card" onClick={() => setSelectedInsight("duplicates")}>
           <span>
             DUPLICATES
           </span>
           <strong>
             {summary.dataset.duplicate_records}
           </strong>
-        </article>
+        </button>
 
-        <article>
+        <button type="button" className="evaluation-summary-card evaluation-clickable-card" onClick={() => setSelectedInsight("failures")}>
           <span>
             FAILURES
           </span>
           <strong>
             {failures.failed_cases}
           </strong>
-        </article>
+        </button>
       </section>
 
 
@@ -547,6 +727,7 @@ function EvaluationWorkspace() {
               .decision_accuracy
           }
           detail="Business decision match"
+          onOpen={() => setSelectedInsight("decision")}
         />
 
         <AccuracyGauge
@@ -558,6 +739,7 @@ function EvaluationWorkspace() {
           detail={
             `${summary.metrics.resolved_credit_cases} resolved credit cases`
           }
+        onOpen={() => setSelectedInsight("credit")}
         />
 
         <AccuracyGauge
@@ -567,13 +749,14 @@ function EvaluationWorkspace() {
               .human_review_accuracy
           }
           detail="Review-routing accuracy"
+          onOpen={() => setSelectedInsight("review")}
         />
       </section>
 
 
       <section className="evaluation-visual-grid">
 
-        <article className="evaluation-panel">
+        <button type="button" className="evaluation-panel evaluation-clickable-card" onClick={() => setSelectedInsight("composition")}>
           <div className="evaluation-panel-heading">
             <div>
               <div className="section-label">
@@ -640,10 +823,10 @@ function EvaluationWorkspace() {
               </div>
             </div>
           </div>
-        </article>
+        </button>
 
 
-        <article className="evaluation-panel">
+        <button type="button" className="evaluation-panel evaluation-clickable-card" onClick={() => setSelectedInsight("repeatability")}>
           <div className="evaluation-panel-heading">
             <div>
               <div className="section-label">
@@ -718,7 +901,7 @@ function EvaluationWorkspace() {
               </strong>
             </div>
           </div>
-        </article>
+        </button>
       </section>
 
 
