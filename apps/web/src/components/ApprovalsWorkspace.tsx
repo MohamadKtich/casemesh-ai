@@ -28,14 +28,44 @@ function formatDate(
 }
 
 
-function formatJson(
-  value: Record<string, unknown>,
+function humanize(
+  value: string | null | undefined,
 ): string {
-  return JSON.stringify(
-    value,
-    null,
-    2,
-  )
+  if (!value) {
+    return "N/A"
+  }
+
+  return value
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) =>
+      character.toUpperCase(),
+    )
+}
+
+
+function approvalNextStep(
+  action: ActionRequestRecord,
+): string {
+  if (action.status === "awaiting_approval") {
+    return "A human reviewer must approve or reject this request before controlled execution can continue."
+  }
+
+  if (
+    action.status === "approved" ||
+    action.status === "auto_approved"
+  ) {
+    return "The request is approved and can move to the controlled execution workspace."
+  }
+
+  if (action.status === "rejected") {
+    return "The request is stopped. No controlled action should execute from this approval."
+  }
+
+  if (action.status === "executed") {
+    return "The approved request has already completed its controlled execution path."
+  }
+
+  return "Review the current request state and audit history before taking the next step."
 }
 
 
@@ -337,10 +367,9 @@ function ApprovalsWorkspace({
           </h2>
 
           <p>
-            Review policy-governed action
-            requests for
-            {" "}
-            {caseRecord.case_number}.
+            Understand why an action needs review,
+            what risk is involved, and what happens
+            after the human decision.
           </p>
         </div>
 
@@ -352,6 +381,38 @@ function ApprovalsWorkspace({
           </span>
         </div>
       </div>
+
+      {!loading &&
+        actions.length > 0 && (
+          <section className="workspace-story-metrics">
+            <article>
+              <span>TOTAL REQUESTS</span>
+              <strong>{actions.length}</strong>
+              <p>
+                Governed action requests connected
+                to this case.
+              </p>
+            </article>
+
+            <article>
+              <span>WAITING FOR HUMAN</span>
+              <strong>{pendingCount}</strong>
+              <p>
+                Requests that cannot proceed without
+                a reviewer decision.
+              </p>
+            </article>
+
+            <article>
+              <span>SAFETY MODEL</span>
+              <strong>HITL</strong>
+              <p>
+                Sensitive actions remain policy
+                guarded and human controlled.
+              </p>
+            </article>
+          </section>
+        )}
 
       {error && (
         <div className="error-panel">
@@ -390,12 +451,12 @@ function ApprovalsWorkspace({
           <div className="evidence-layout">
             <aside className="documents-panel">
               <div className="section-label">
-                ACTION REQUESTS
+                APPROVAL QUEUE
               </div>
 
               <div className="document-list">
                 {actions.map(
-                  (action) => (
+                  (action, index) => (
                     <button
                       key={
                         action.action_request_id
@@ -405,8 +466,8 @@ function ApprovalsWorkspace({
                         selectedAction
                           ?.action_request_id ===
                         action.action_request_id
-                          ? "document-item active"
-                          : "document-item"
+                          ? "document-item governance-queue-item active"
+                          : "document-item governance-queue-item"
                       }
                       onClick={() => {
                         setAuditEvents([])
@@ -425,17 +486,37 @@ function ApprovalsWorkspace({
                       }}
                     >
                       <strong>
-                        {action.action_type}
+                        Request
+                        {" "}
+                        {String(
+                          index + 1,
+                        ).padStart(
+                          2,
+                          "0",
+                        )}
+                        {" · "}
+                        {humanize(
+                          action.action_type,
+                        )}
                       </strong>
 
                       <span>
-                        {action.status}
-                        {" | "}
-                        {
+                        {humanize(
+                          action.status,
+                        )}
+                        {" · "}
+                        {humanize(
                           action.policy
-                            .risk_level
-                        }
+                            .risk_level,
+                        )}
+                        {" risk"}
                       </span>
+
+                      <time>
+                        {formatDate(
+                          action.created_at,
+                        )}
+                      </time>
                     </button>
                   ),
                 )}
@@ -444,18 +525,24 @@ function ApprovalsWorkspace({
 
             <div className="document-detail-panel">
               {selectedAction && (
-                <>
-                  <div className="document-detail-header">
+                <div className="investigation-story">
+                  <section className="story-hero">
                     <div>
                       <div className="section-label">
-                        SELECTED REQUEST
+                        APPROVAL STORY
                       </div>
 
                       <h3>
-                        {
-                          selectedAction.action_type
-                        }
+                        {humanize(
+                          selectedAction.action_type,
+                        )}
                       </h3>
+
+                      <p>
+                        Why this request exists, why
+                        policy cares, and what the
+                        reviewer controls.
+                      </p>
                     </div>
 
                     <span
@@ -463,169 +550,154 @@ function ApprovalsWorkspace({
                         `status-badge status-${selectedAction.status}`
                       }
                     >
-                      {
-                        selectedAction.status
-                      }
+                      {humanize(
+                        selectedAction.status,
+                      )}
                     </span>
-                  </div>
+                  </section>
 
-                  <div className="document-metadata">
+                  <div className="story-metrics">
                     <div>
-                      <span>
-                        Action Request ID
-                      </span>
-
+                      <span>Policy</span>
                       <strong>
-                        {
-                          selectedAction
-                            .action_request_id
-                        }
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>
-                        Policy Decision
-                      </span>
-
-                      <strong>
-                        {
+                        {humanize(
                           selectedAction
                             .policy
-                            .decision
-                        }
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>
-                        Risk Level
-                      </span>
-
-                      <strong>
-                        {
-                          selectedAction
-                            .policy
-                            .risk_level
-                        }
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>
-                        Human Approval
-                      </span>
-
-                      <strong>
-                        {
-                          selectedAction
-                            .policy
-                            .requires_human_approval
-                            ? "Required"
-                            : "Not Required"
-                        }
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>
-                        Investigation
-                      </span>
-
-                      <strong>
-                        {
-                          selectedAction
-                            .investigation_run_id ??
-                          "N/A"
-                        }
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>
-                        Created
-                      </span>
-
-                      <strong>
-                        {formatDate(
-                          selectedAction
-                            .created_at,
+                            .decision,
                         )}
                       </strong>
                     </div>
-                  </div>
 
-                  <div className="chunks-header">
                     <div>
-                      <div className="section-label">
-                        POLICY
-                      </div>
+                      <span>Risk</span>
+                      <strong>
+                        {humanize(
+                          selectedAction
+                            .policy
+                            .risk_level,
+                        )}
+                      </strong>
+                    </div>
 
-                      <h3>
-                        Guardrail Evaluation
-                      </h3>
+                    <div>
+                      <span>Human Review</span>
+                      <strong>
+                        {selectedAction
+                          .policy
+                          .requires_human_approval
+                          ? "Required"
+                          : "Not required"}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Execution</span>
+                      <strong>
+                        {selectedAction
+                          .execution_enabled
+                          ? "Enabled"
+                          : "Guarded"}
+                      </strong>
                     </div>
                   </div>
 
-                  <article className="chunk-card">
-                    <pre>
-                      {
-                        selectedAction
+                  <div className="story-grid">
+                    <article className="story-card">
+                      <div className="story-step">
+                        01
+                      </div>
+
+                      <div className="section-label">
+                        PROPOSED ACTION
+                      </div>
+
+                      <h4>
+                        What is CaseMesh asking to do?
+                      </h4>
+
+                      <p className="story-copy">
+                        {humanize(
+                          selectedAction.action_type,
+                        )}
+                        {" "}
+                        has been proposed for
+                        {" "}
+                        {caseRecord.case_number}.
+                        {" "}
+                        The request was created
+                        {" "}
+                        {formatDate(
+                          selectedAction.created_at,
+                        )}.
+                      </p>
+                    </article>
+
+                    <article className="story-card">
+                      <div className="story-step">
+                        02
+                      </div>
+
+                      <div className="section-label">
+                        POLICY REASON
+                      </div>
+
+                      <h4>
+                        Why is this governed?
+                      </h4>
+
+                      <p className="story-copy">
+                        {selectedAction
                           .policy
                           .rationale ||
-                        "No policy rationale available."
-                      }
-                    </pre>
-                  </article>
+                          "No policy rationale is available."}
+                      </p>
+                    </article>
 
-                  <div className="chunks-header">
-                    <div>
+                    <article className="story-card story-card-accent">
+                      <div className="story-step">
+                        03
+                      </div>
+
                       <div className="section-label">
-                        PAYLOAD
+                        HUMAN CONTROL
                       </div>
 
-                      <h3>
-                        Proposed Action Payload
-                      </h3>
-                    </div>
+                      <h4>
+                        What decision is needed?
+                      </h4>
+
+                      <p className="story-copy">
+                        {selectedAction.status ===
+                        "awaiting_approval"
+                          ? "A reviewer must explicitly approve or reject this action before it can continue."
+                          : selectedAction.approval_decision
+                            ? `Human decision recorded: ${humanize(
+                                selectedAction.approval_decision,
+                              )}.`
+                            : "No active human decision is required in the current state."}
+                      </p>
+                    </article>
+
+                    <article className="story-card story-next-action">
+                      <div className="story-step">
+                        04
+                      </div>
+
+                      <div className="section-label">
+                        NEXT STEP
+                      </div>
+
+                      <h4>
+                        What happens now?
+                      </h4>
+
+                      <p className="story-copy">
+                        {approvalNextStep(
+                          selectedAction,
+                        )}
+                      </p>
+                    </article>
                   </div>
-
-                  <article className="chunk-card">
-                    <pre>
-                      {formatJson(
-                        selectedAction
-                          .payload,
-                      )}
-                    </pre>
-                  </article>
-
-                  {Object.keys(
-                    selectedAction
-                      .reviewed_payload,
-                  ).length > 0 && (
-                    <>
-                      <div className="chunks-header">
-                        <div>
-                          <div className="section-label">
-                            REVIEWED PAYLOAD
-                          </div>
-
-                          <h3>
-                            Human Reviewed Payload
-                          </h3>
-                        </div>
-                      </div>
-
-                      <article className="chunk-card">
-                        <pre>
-                          {formatJson(
-                            selectedAction
-                              .reviewed_payload,
-                          )}
-                        </pre>
-                      </article>
-                    </>
-                  )}
 
                   {selectedAction.status ===
                     "awaiting_approval" && (
@@ -636,15 +708,13 @@ function ApprovalsWorkspace({
                         </div>
 
                         <h3>
-                          Approval Decision
+                          Record the human decision
                         </h3>
 
                         <p>
-                          Review the policy,
-                          risk and proposed
-                          payload before
-                          recording a human
-                          decision.
+                          Confirm reviewer identity,
+                          add an optional explanation,
+                          then approve or reject.
                         </p>
                       </div>
 
@@ -723,15 +793,7 @@ function ApprovalsWorkspace({
                           }}
                         />
 
-                        <div
-                          style={{
-                            display:
-                              "grid",
-                            gridTemplateColumns:
-                              "1fr 1fr",
-                            gap: "10px",
-                          }}
-                        >
+                        <div className="approval-decision-buttons">
                           <button
                             className="primary-action-button"
                             type="button"
@@ -766,12 +828,6 @@ function ApprovalsWorkspace({
                                 "reject",
                               )
                             }
-                            style={{
-                              borderColor:
-                                "#7d3344",
-                              color:
-                                "#ff899c",
-                            }}
                           >
                             Reject
                           </button>
@@ -782,74 +838,145 @@ function ApprovalsWorkspace({
 
                   {selectedAction
                     .approval_decision && (
-                    <>
-                      <div className="chunks-header">
-                        <div>
-                          <div className="section-label">
-                            DECISION
-                          </div>
+                    <section className="story-decision-banner">
+                      <div>
+                        <span>
+                          HUMAN DECISION
+                        </span>
 
-                          <h3>
-                            Human Review
-                          </h3>
-                        </div>
-                      </div>
-
-                      <div className="document-metadata">
-                        <div>
-                          <span>
-                            Decision
-                          </span>
-
-                          <strong>
-                            {
-                              selectedAction
-                                .approval_decision
-                            }
-                          </strong>
-                        </div>
-
-                        <div>
-                          <span>
-                            Reviewer
-                          </span>
-
-                          <strong>
-                            {
-                              selectedAction
-                                .reviewer_ref ??
-                              "N/A"
-                            }
-                          </strong>
-                        </div>
-
-                        <div>
-                          <span>
-                            Execution Enabled
-                          </span>
-
-                          <strong>
-                            {
-                              selectedAction
-                                .execution_enabled
-                                ? "Yes"
-                                : "No"
-                            }
-                          </strong>
-                        </div>
-                      </div>
-
-                      <article className="chunk-card">
-                        <pre>
-                          {
+                        <strong>
+                          {humanize(
                             selectedAction
-                              .approval_comment ||
-                            "No reviewer comment."
-                          }
+                              .approval_decision,
+                          )}
+                        </strong>
+                      </div>
+
+                      <p>
+                        Reviewer:
+                        {" "}
+                        {selectedAction
+                          .reviewer_ref ??
+                          "Unknown"}
+                        {selectedAction
+                          .approval_comment
+                          ? ` · ${selectedAction.approval_comment}`
+                          : ""}
+                      </p>
+                    </section>
+                  )}
+
+                  <details className="story-details">
+                    <summary>
+                      Proposed and reviewed payload
+                    </summary>
+
+                    <div className="story-details-body">
+                      <article className="story-source-card">
+                        <div>
+                          <strong>
+                            Proposed payload
+                          </strong>
+                        </div>
+
+                        <pre className="story-raw-json">
+                          {JSON.stringify(
+                            selectedAction.payload,
+                            null,
+                            2,
+                          )}
                         </pre>
                       </article>
-                    </>
-                  )}
+
+                      {Object.keys(
+                        selectedAction
+                          .reviewed_payload,
+                      ).length > 0 && (
+                        <article className="story-source-card">
+                          <div>
+                            <strong>
+                              Human reviewed payload
+                            </strong>
+                          </div>
+
+                          <pre className="story-raw-json">
+                            {JSON.stringify(
+                              selectedAction
+                                .reviewed_payload,
+                              null,
+                              2,
+                            )}
+                          </pre>
+                        </article>
+                      )}
+                    </div>
+                  </details>
+
+                  <details className="story-details">
+                    <summary>
+                      Governance timeline
+                    </summary>
+
+                    <div className="story-details-body">
+                      {loadingAudit && (
+                        <div className="empty-state">
+                          Loading audit events...
+                        </div>
+                      )}
+
+                      {!loadingAudit &&
+                        auditEvents.length === 0 && (
+                          <div className="empty-state">
+                            No audit events available.
+                          </div>
+                        )}
+
+                      {!loadingAudit &&
+                        auditEvents.map(
+                          (event) => (
+                            <article
+                              className="story-source-card"
+                              key={event.id}
+                            >
+                              <div>
+                                <strong>
+                                  {humanize(
+                                    event.event_type,
+                                  )}
+                                </strong>
+
+                                <span>
+                                  {formatDate(
+                                    event.created_at,
+                                  )}
+                                </span>
+                              </div>
+
+                              <p>
+                                Actor:
+                                {" "}
+                                {event.actor_ref ??
+                                  event.actor_type}
+                              </p>
+                            </article>
+                          ),
+                        )}
+                    </div>
+                  </details>
+
+                  <details className="story-details story-raw-details">
+                    <summary>
+                      Developer view: request JSON
+                    </summary>
+
+                    <pre className="story-raw-json">
+                      {JSON.stringify(
+                        selectedAction,
+                        null,
+                        2,
+                      )}
+                    </pre>
+                  </details>
 
                   {selectedAction
                     .error_message && (
@@ -860,82 +987,7 @@ function ApprovalsWorkspace({
                       }
                     </div>
                   )}
-
-                  <div className="chunks-header">
-                    <div>
-                      <div className="section-label">
-                        AUDIT
-                      </div>
-
-                      <h3>
-                        Governance Timeline
-                      </h3>
-                    </div>
-                  </div>
-
-                  {loadingAudit && (
-                    <div className="empty-state">
-                      Loading audit events...
-                    </div>
-                  )}
-
-                  {!loadingAudit &&
-                    auditEvents.length ===
-                      0 && (
-                      <div className="empty-state">
-                        No audit events
-                        available.
-                      </div>
-                    )}
-
-                  {!loadingAudit &&
-                    auditEvents.map(
-                      (event) => (
-                        <article
-                          className="chunk-card"
-                          key={event.id}
-                        >
-                          <div className="chunk-card-header">
-                            <strong>
-                              {
-                                event.event_type
-                              }
-                            </strong>
-
-                            <span>
-                              {formatDate(
-                                event.created_at,
-                              )}
-                            </span>
-                          </div>
-
-                          <div
-                            style={{
-                              padding:
-                                "14px",
-                              borderBottom:
-                                "1px solid #22314a",
-                            }}
-                          >
-                            <strong>
-                              Actor:
-                              {" "}
-                              {
-                                event.actor_ref ??
-                                event.actor_type
-                              }
-                            </strong>
-                          </div>
-
-                          <pre>
-                            {formatJson(
-                              event.details,
-                            )}
-                          </pre>
-                        </article>
-                      ),
-                    )}
-                </>
+                </div>
               )}
             </div>
           </div>
