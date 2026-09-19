@@ -43,6 +43,23 @@ function humanize(
 }
 
 
+function decisionLabel(
+  value: string | null | undefined,
+): string {
+  if (value === "approve") {
+    return "Approved"
+  }
+
+  if (value === "reject") {
+    return "Rejected"
+  }
+
+  return humanize(
+    value,
+  )
+}
+
+
 function approvalNextStep(
   action: ActionRequestRecord,
 ): string {
@@ -671,7 +688,7 @@ function ApprovalsWorkspace({
                         "awaiting_approval"
                           ? "A reviewer must explicitly approve or reject this action before it can continue."
                           : selectedAction.approval_decision
-                            ? `Human decision recorded: ${humanize(
+                            ? `Human decision recorded: ${decisionLabel(
                                 selectedAction.approval_decision,
                               )}.`
                             : "No active human decision is required in the current state."}
@@ -845,7 +862,7 @@ function ApprovalsWorkspace({
                         </span>
 
                         <strong>
-                          {humanize(
+                          {decisionLabel(
                             selectedAction
                               .approval_decision,
                           )}

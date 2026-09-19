@@ -45,6 +45,23 @@ function humanize(
 }
 
 
+function decisionLabel(
+  value: string | null | undefined,
+): string {
+  if (value === "approve") {
+    return "Approved"
+  }
+
+  if (value === "reject") {
+    return "Rejected"
+  }
+
+  return humanize(
+    value,
+  )
+}
+
+
 function canDryRun(
   action: ActionRequestRecord,
 ): boolean {
@@ -660,7 +677,7 @@ function ActionsWorkspace({
                     <div>
                       <span>Approval</span>
                       <strong>
-                        {humanize(
+                        {decisionLabel(
                           selectedAction
                             .approval_decision,
                         )}
@@ -788,7 +805,7 @@ function ActionsWorkspace({
                       <p className="story-copy">
                         {selectedAction
                           .approval_decision
-                          ? `Decision: ${humanize(
+                          ? `Decision: ${decisionLabel(
                               selectedAction
                                 .approval_decision,
                             )}. Reviewer: ${selectedAction.reviewer_ref ??

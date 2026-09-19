@@ -61,6 +61,49 @@ function humanizeValue(
 }
 
 
+function caseNextStep(
+  status: string,
+): string {
+  const normalized =
+    status.toLowerCase()
+
+  if (
+    normalized === "action_executed" ||
+    normalized === "executed" ||
+    normalized === "resolved"
+  ) {
+    return "Review the execution audit trail and outcome, then close the case or continue only if follow-up work remains."
+  }
+
+  if (
+    normalized === "awaiting_approval" ||
+    normalized === "pending_approval"
+  ) {
+    return "Review the governed action request and record the required human approval decision."
+  }
+
+  if (
+    normalized === "investigating" ||
+    normalized === "under_investigation"
+  ) {
+    return "Continue the investigation, verify grounded evidence, and resolve any evidence gaps before proposing an action."
+  }
+
+  if (
+    normalized === "new" ||
+    normalized === "open"
+  ) {
+    return "Add supporting evidence and start a grounded investigation before making a case decision."
+  }
+
+  if (normalized === "closed") {
+    return "This case is closed. Review the audit history only if follow-up or reopening is required."
+  }
+
+  return "Continue through evidence, investigation, approval, and controlled action according to the current case state."
+}
+
+
 function App() {
   const {
     instance,
@@ -902,13 +945,13 @@ function App() {
             </div>
 
             <h4>
-              Continue the case journey
+              Recommended next step
             </h4>
 
             <p className="story-copy">
-              Move through evidence, investigation,
-              approval, and controlled action as the
-              case requires.
+              {caseNextStep(
+                caseRecord.status,
+              )}
             </p>
           </article>
         </div>
