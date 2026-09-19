@@ -58,6 +58,42 @@ function formatSimilarity(
 }
 
 
+function humanize(
+  value: string,
+): string {
+  return value
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) =>
+      character.toUpperCase(),
+    )
+}
+
+
+function evidenceStage(
+  document: DocumentRecord,
+): string {
+  if (document.ingestion_error) {
+    return "Processing needs attention"
+  }
+
+  if (
+    document.ingestion_status === "ready" ||
+    document.ingestion_status === "embedded"
+  ) {
+    return "Ready for retrieval"
+  }
+
+  if (
+    document.ingestion_status === "ingested" ||
+    document.parser_name
+  ) {
+    return "Parsed and structured"
+  }
+
+  return "Evidence received"
+}
+
+
 function EvidenceWorkspace({
   caseRecord,
   onBack,
@@ -502,6 +538,49 @@ function EvidenceWorkspace({
         </div>
       </div>
 
+      {!loadingDocuments &&
+        !error &&
+        documents.length > 0 && (
+          <section className="workspace-story-metrics">
+            <article>
+              <span>DOCUMENTS</span>
+              <strong>
+                {documents.length}
+              </strong>
+              <p>
+                Evidence sources currently attached
+                to this case.
+              </p>
+            </article>
+
+            <article>
+              <span>READY SOURCES</span>
+              <strong>
+                {documents.filter(
+                  (document) =>
+                    document.ingestion_status === "ready" ||
+                    document.ingestion_status === "embedded",
+                ).length}
+              </strong>
+              <p>
+                Sources ready to support retrieval
+                and grounded reasoning.
+              </p>
+            </article>
+
+            <article>
+              <span>SEARCH MODE</span>
+              <strong>
+                Hybrid RAG
+              </strong>
+              <p>
+                Semantic and keyword retrieval
+                combined with RRF ranking.
+              </p>
+            </article>
+          </section>
+        )}
+
       <section className="evidence-upload-panel">
         <div>
           <div className="section-label">
@@ -712,70 +791,57 @@ function EvidenceWorkspace({
 
       {searchResult && (
         <section className="document-detail-panel">
-          <div className="document-detail-header">
+          <div className="story-hero">
             <div>
               <div className="section-label">
-                SEARCH RESULTS
+                EVIDENCE ANSWER PATH
               </div>
 
               <h3>
-                Hybrid Evidence Results
+                What did the search find?
               </h3>
+
+              <p>
+                “{searchResult.query}”
+              </p>
             </div>
 
             <span className="status-badge status-ready">
-              {searchResult.mode}
+              {searchResult.results.length}
+              {" "}
+              result
+              {searchResult.results.length === 1
+                ? ""
+                : "s"}
             </span>
           </div>
 
-          <div className="document-metadata">
+          <div className="story-metrics">
             <div>
-              <span>Query</span>
-
+              <span>Retrieval</span>
               <strong>
-                {searchResult.query}
-              </strong>
-            </div>
-
-            <div>
-              <span>
-                Embedding Model
-              </span>
-
-              <strong>
-                {searchResult.embedding_model}
-              </strong>
-            </div>
-
-            <div>
-              <span>Results</span>
-
-              <strong>
-                {searchResult.results.length}
+                {humanize(
+                  searchResult.mode,
+                )}
               </strong>
             </div>
 
             <div>
               <span>Top K</span>
-
               <strong>
                 {searchResult.top_k}
               </strong>
             </div>
 
             <div>
-              <span>
-                Retrieval Mode
-              </span>
-
+              <span>Model</span>
               <strong>
-                {searchResult.mode}
+                {searchResult.embedding_model}
               </strong>
             </div>
 
             <div>
               <span>Case</span>
-
               <strong>
                 {caseRecord.case_number}
               </strong>
@@ -1004,15 +1070,21 @@ function EvidenceWorkspace({
             <div className="document-detail-panel">
               {selectedDocument && (
                 <>
-                  <div className="document-detail-header">
+                  <div className="story-hero">
                     <div>
                       <div className="section-label">
-                        SELECTED DOCUMENT
+                        EVIDENCE STORY
                       </div>
 
                       <h3>
                         {selectedDocument.filename}
                       </h3>
+
+                      <p>
+                        {evidenceStage(
+                          selectedDocument,
+                        )}
+                      </p>
                     </div>
 
                     <span
@@ -1020,9 +1092,64 @@ function EvidenceWorkspace({
                         `status-badge status-${selectedDocument.ingestion_status}`
                       }
                     >
-                      {selectedDocument.ingestion_status}
+                      {humanize(
+                        selectedDocument.ingestion_status,
+                      )}
                     </span>
                   </div>
+
+                  <section className="story-timeline evidence-story-timeline">
+                    <div className="story-timeline-item done">
+                      <span>1</span>
+                      <strong>Received</strong>
+                      <small>
+                        Evidence attached to the case
+                      </small>
+                    </div>
+
+                    <div
+                      className={
+                        selectedDocument.parser_name
+                          ? "story-timeline-item done"
+                          : "story-timeline-item"
+                      }
+                    >
+                      <span>2</span>
+                      <strong>Parsed</strong>
+                      <small>
+                        Text extracted and structured
+                      </small>
+                    </div>
+
+                    <div
+                      className={
+                        chunks.length > 0
+                          ? "story-timeline-item done"
+                          : "story-timeline-item"
+                      }
+                    >
+                      <span>3</span>
+                      <strong>Chunked</strong>
+                      <small>
+                        Evidence split into retrievable units
+                      </small>
+                    </div>
+
+                    <div
+                      className={
+                        selectedDocument.ingestion_status === "ready" ||
+                        selectedDocument.ingestion_status === "embedded"
+                          ? "story-timeline-item done"
+                          : "story-timeline-item"
+                      }
+                    >
+                      <span>4</span>
+                      <strong>Ready</strong>
+                      <small>
+                        Available to Hybrid RAG
+                      </small>
+                    </div>
+                  </section>
 
                   <div className="document-metadata">
                     <div>
@@ -1096,7 +1223,7 @@ function EvidenceWorkspace({
                       </div>
 
                       <h3>
-                        Document Chunks
+                        What CaseMesh can retrieve
                       </h3>
                     </div>
                   </div>
