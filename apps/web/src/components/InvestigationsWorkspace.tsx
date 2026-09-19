@@ -50,6 +50,46 @@ function formatDate(
 }
 
 
+function formatRunDate(
+  value: string | null,
+): string {
+  if (!value) {
+    return "Date unavailable"
+  }
+
+  return new Intl.DateTimeFormat(
+    "en",
+    {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    },
+  ).format(
+    new Date(value),
+  )
+}
+
+
+function objectivePreview(
+  value: string | null,
+): string {
+  if (!value) {
+    return "No objective recorded."
+  }
+
+  const clean =
+    value.replace(/\s+/g, " ").trim()
+
+  if (clean.length <= 92) {
+    return clean
+  }
+
+  return `${clean.slice(0, 89)}...`
+}
+
+
 function formatLabel(
   value: string | null | undefined,
 ): string {
@@ -489,17 +529,17 @@ function InvestigationsWorkspace({
                 INVESTIGATION RUNS
               </div>
 
-              <div className="document-list">
+              <div className="document-list investigation-run-list">
                 {runs.map(
-                  (run) => (
+                  (run, index) => (
                     <button
                       key={run.workflow_id}
                       type="button"
                       className={
                         selectedRun?.workflow_id ===
                         run.workflow_id
-                          ? "document-item active"
-                          : "document-item"
+                          ? "document-item investigation-run-item active"
+                          : "document-item investigation-run-item"
                       }
                       onClick={() =>
                         setSelectedRun(
@@ -507,17 +547,63 @@ function InvestigationsWorkspace({
                         )
                       }
                     >
-                      <strong>
-                        {run.objective ??
-                          "Investigation"}
-                      </strong>
+                      <div className="investigation-run-heading">
+                        <strong>
+                          Run {String(
+                            index + 1,
+                          ).padStart(
+                            2,
+                            "0",
+                          )}
+                        </strong>
 
-                      <span>
-                        {run.state}
-                        {" | "}
-                        {run.confidence ??
-                          "no confidence"}
-                      </span>
+                        <span
+                          className={
+                            `investigation-run-state ${stateClass(
+                              run.state,
+                            )}`
+                          }
+                        >
+                          {formatLabel(
+                            run.state,
+                          )}
+                        </span>
+                      </div>
+
+                      <p className="investigation-run-objective">
+                        {objectivePreview(
+                          run.objective,
+                        )}
+                      </p>
+
+                      <div className="investigation-run-stats">
+                        <span>
+                          {formatLabel(
+                            run.confidence,
+                          )}
+                          {" "}
+                          confidence
+                        </span>
+
+                        <span>
+                          {run.evidence.length}
+                          {" "}
+                          evidence
+                        </span>
+
+                        <span>
+                          {run.citations.length}
+                          {" "}
+                          citations
+                        </span>
+                      </div>
+
+                      <time>
+                        {formatRunDate(
+                          run.completed_at ??
+                            run.created_at,
+                        )}
+                      </time>
                     </button>
                   ),
                 )}

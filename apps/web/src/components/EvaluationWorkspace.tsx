@@ -391,6 +391,115 @@ function EvaluationWorkspace() {
       </section>
 
 
+      <section className="evaluation-story-grid">
+        <article className="story-card story-card-accent">
+          <div className="story-step">
+            01
+          </div>
+
+          <div className="section-label">
+            WHAT WE TESTED
+          </div>
+
+          <h4>
+            Benchmark scope
+          </h4>
+
+          <p className="story-copy">
+            CaseMesh evaluated
+            {" "}
+            {summary.dataset.unique_records}
+            {" "}
+            unique scenario
+            {summary.dataset.unique_records === 1
+              ? ""
+              : "s"}
+            {" "}
+            across
+            {" "}
+            {summary.dataset.total_records}
+            {" "}
+            total records.
+          </p>
+        </article>
+
+        <article className="story-card">
+          <div className="story-step">
+            02
+          </div>
+
+          <div className="section-label">
+            WHAT WORKED
+          </div>
+
+          <h4>
+            Decision quality
+          </h4>
+
+          <p className="story-copy">
+            Decision accuracy is
+            {" "}
+            {percent(
+              summary.metrics
+                .decision_accuracy,
+            )}
+            , human-review routing is
+            {" "}
+            {percent(
+              summary.metrics
+                .human_review_accuracy,
+            )}
+            , and credit accuracy is
+            {" "}
+            {percent(
+              summary.metrics
+                .credit_accuracy,
+            )}
+            .
+          </p>
+        </article>
+
+        <article className="story-card">
+          <div className="story-step">
+            03
+          </div>
+
+          <div className="section-label">
+            CAN WE REPEAT IT?
+          </div>
+
+          <h4>
+            Stability story
+          </h4>
+
+          <p className="story-copy">
+            {stability.stable
+              ? `The baseline stayed stable across ${stability.repeated_runs} repeated runs with ${stability.unique_result_hashes} result hash pattern.`
+              : "The repeated runs produced instability that should be investigated before relying on this baseline."}
+          </p>
+        </article>
+
+        <article className="story-card story-next-action">
+          <div className="story-step">
+            04
+          </div>
+
+          <div className="section-label">
+            WHAT NEEDS ATTENTION
+          </div>
+
+          <h4>
+            Read the benchmark carefully
+          </h4>
+
+          <p className="story-copy">
+            {failures.failed_cases === 0
+              ? "No failing benchmark cases are currently reported. Duplicate records still measure repeatability, not independent model generalization."
+              : `${failures.failed_cases} benchmark case(s) failed. Review the failure evidence before treating the baseline as ready.`}
+          </p>
+        </article>
+      </section>
+
       <section className="evaluation-summary-strip">
         <article>
           <span>
