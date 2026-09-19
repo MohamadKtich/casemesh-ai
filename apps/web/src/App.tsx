@@ -50,6 +50,17 @@ type ActiveView =
   | "evaluation"
 
 
+function humanizeValue(
+  value: string,
+): string {
+  return value
+    .replaceAll("_", " ")
+    .replace(/\b\w/g, (character) =>
+      character.toUpperCase(),
+    )
+}
+
+
 function App() {
   const {
     instance,
@@ -744,10 +755,10 @@ function App() {
           Back to Cases
         </button>
 
-        <div className="case-detail-header">
+        <section className="story-hero case-story-hero">
           <div>
             <div className="section-label">
-              CASE DETAILS
+              CASE STORY
             </div>
 
             <h2>
@@ -765,7 +776,9 @@ function App() {
                 `status-badge status-${caseRecord.status}`
               }
             >
-              {caseRecord.status}
+              {humanizeValue(
+                caseRecord.status,
+              )}
             </span>
 
             <span
@@ -773,142 +786,182 @@ function App() {
                 `priority-badge priority-${caseRecord.priority}`
               }
             >
-              {caseRecord.priority}
+              {humanizeValue(
+                caseRecord.priority,
+              )}
             </span>
           </div>
-        </div>
+        </section>
 
-        <div className="case-detail-grid">
-          <article className="workspace-card">
+        <div className="story-grid case-overview-story">
+          <article className="story-card story-card-accent">
+            <div className="story-step">
+              01
+            </div>
+
             <div className="section-label">
-              OVERVIEW
+              WHAT HAPPENED
             </div>
 
-            <h3>
-              Case Information
-            </h3>
+            <h4>
+              Case context
+            </h4>
 
-            <div className="case-info-list">
-              <div>
-                <span>Case ID</span>
-
-                <strong>
-                  {caseRecord.id}
-                </strong>
-              </div>
-
-              <div>
-                <span>
-                  Case Number
-                </span>
-
-                <strong>
-                  {caseRecord.case_number}
-                </strong>
-              </div>
-
-              <div>
-                <span>Status</span>
-
-                <strong>
-                  {caseRecord.status}
-                </strong>
-              </div>
-
-              <div>
-                <span>Priority</span>
-
-                <strong>
-                  {caseRecord.priority}
-                </strong>
-              </div>
-
-              <div>
-                <span>
-                  Customer Reference
-                </span>
-
-                <strong>
-                  {caseRecord.customer_ref ??
-                    "None"}
-                </strong>
-              </div>
-            </div>
+            <p className="story-copy">
+              {caseRecord.description ??
+                "No description has been recorded for this case yet."}
+            </p>
           </article>
 
-          <article className="workspace-card">
-            <div className="section-label">
-              DESCRIPTION
+          <article className="story-card">
+            <div className="story-step">
+              02
             </div>
 
-            <h3>
-              Case Context
-            </h3>
+            <div className="section-label">
+              WHERE IT STANDS
+            </div>
 
-            <p className="case-description">
-              {caseRecord.description ??
-                "No description available."}
+            <h4>
+              Current operating state
+            </h4>
+
+            <p className="story-copy">
+              This case is currently
+              {" "}
+              {humanizeValue(
+                caseRecord.status,
+              )}
+              {" "}
+              with
+              {" "}
+              {humanizeValue(
+                caseRecord.priority,
+              )}
+              {" "}
+              priority.
             </p>
 
-            <div className="case-timestamps">
-              <div>
-                <span>Created</span>
+            <div className="story-next-meta">
+              <span>Created</span>
+              <strong>
+                {new Date(
+                  caseRecord.created_at,
+                ).toLocaleString()}
+              </strong>
 
-                <strong>
-                  {new Date(
-                    caseRecord.created_at,
-                  ).toLocaleString()}
-                </strong>
-              </div>
-
-              <div>
-                <span>
-                  Last Updated
-                </span>
-
-                <strong>
-                  {new Date(
-                    caseRecord.updated_at,
-                  ).toLocaleString()}
-                </strong>
-              </div>
+              <span>Last updated</span>
+              <strong>
+                {new Date(
+                  caseRecord.updated_at,
+                ).toLocaleString()}
+              </strong>
             </div>
+          </article>
+
+          <article className="story-card">
+            <div className="story-step">
+              03
+            </div>
+
+            <div className="section-label">
+              IDENTITY
+            </div>
+
+            <h4>
+              Who and what this case refers to
+            </h4>
+
+            <p className="story-copy">
+              Customer reference:
+              {" "}
+              {caseRecord.customer_ref ??
+                "Not provided"}.
+            </p>
+
+            <div className="story-next-meta">
+              <span>Case ID</span>
+              <strong>
+                {caseRecord.id}
+              </strong>
+
+              <span>Case number</span>
+              <strong>
+                {caseRecord.case_number}
+              </strong>
+            </div>
+          </article>
+
+          <article className="story-card story-next-action">
+            <div className="story-step">
+              04
+            </div>
+
+            <div className="section-label">
+              NEXT PATH
+            </div>
+
+            <h4>
+              Continue the case journey
+            </h4>
+
+            <p className="story-copy">
+              Move through evidence, investigation,
+              approval, and controlled action as the
+              case requires.
+            </p>
           </article>
         </div>
 
-        <div className="case-next-actions">
+        <section className="case-journey">
           <button
             type="button"
-            className="primary-action-button"
+            className="case-journey-step"
             onClick={openEvidence}
           >
-            View Evidence
+            <span>01</span>
+            <strong>Evidence</strong>
+            <small>
+              Add and retrieve supporting sources
+            </small>
           </button>
 
           <button
             type="button"
-            className="secondary-action-button"
+            className="case-journey-step"
             onClick={openInvestigations}
           >
-            View Investigations
+            <span>02</span>
+            <strong>Investigate</strong>
+            <small>
+              Build grounded findings and citations
+            </small>
           </button>
 
           <button
             type="button"
-            className="secondary-action-button"
+            className="case-journey-step"
             onClick={openApprovals}
           >
-            View Approvals
+            <span>03</span>
+            <strong>Approve</strong>
+            <small>
+              Review policy-governed decisions
+            </small>
           </button>
 
           <button
             type="button"
-            className="secondary-action-button"
+            className="case-journey-step"
             onClick={openActions}
           >
-            View Actions
+            <span>04</span>
+            <strong>Act safely</strong>
+            <small>
+              Simulate controlled execution
+            </small>
           </button>
-        </div>
+        </section>
       </section>
     )
   }
