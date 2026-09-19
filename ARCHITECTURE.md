@@ -137,10 +137,10 @@ Query
   +--> Lexical Retrieval --> PostgreSQL Full-Text Search
   |
   v
-Merge
+Reciprocal Rank Fusion (RRF)
   |
   v
-Rerank
+Ranked Evidence
   |
   v
 Grounded Context
