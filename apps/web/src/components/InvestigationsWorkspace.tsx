@@ -50,8 +50,8 @@ function formatDate(
 }
 
 
-function formatReviewValue(
-  value: string | null,
+function formatLabel(
+  value: string | null | undefined,
 ): string {
   if (!value) {
     return "N/A"
@@ -78,6 +78,90 @@ function formatReasonCodes(
           .join(" "),
     )
     .join(", ")
+}
+
+
+function deriveNextStep(
+  run: InvestigationRun,
+): string {
+  if (run.state === "failed") {
+    return "Review the workflow error, correct the underlying issue, and run the investigation again."
+  }
+
+  if (
+    run.second_review?.forced_human_review ||
+    run.second_review?.effective_route === "human_review"
+  ) {
+    return "Human review is required before any sensitive action can move forward."
+  }
+
+  if (run.abstained) {
+    return "Collect stronger evidence before making a decision. The investigation abstained from a confident conclusion."
+  }
+
+  if (run.gaps.length > 0) {
+    return "Resolve the identified evidence gaps, then reassess the case before taking action."
+  }
+
+  if (run.state === "completed") {
+    return "Review the grounded findings and citations, then continue to approval or controlled action only if policy allows."
+  }
+
+  return "The investigation is still in progress. Wait for the current workflow step to finish."
+}
+
+
+function deriveRiskSummary(
+  run: InvestigationRun,
+): string {
+  const riskLevel =
+    run.second_review?.risk_level
+
+  if (riskLevel) {
+    return `${formatLabel(riskLevel)} risk`
+  }
+
+  if (
+    run.risk_triggers
+      ?.second_review_requested
+  ) {
+    return "Second review requested"
+  }
+
+  return "No elevated review signal"
+}
+
+
+function toneClass(
+  value: string | null | undefined,
+): string {
+  if (
+    value === "critical" ||
+    value === "high" ||
+    value === "failed" ||
+    value === "blocked"
+  ) {
+    return "story-tone-danger"
+  }
+
+  if (
+    value === "medium" ||
+    value === "uncertain" ||
+    value === "human_review"
+  ) {
+    return "story-tone-warning"
+  }
+
+  if (
+    value === "low" ||
+    value === "agree" ||
+    value === "continue" ||
+    value === "completed"
+  ) {
+    return "story-tone-good"
+  }
+
+  return "story-tone-neutral"
 }
 
 
@@ -282,8 +366,8 @@ function InvestigationsWorkspace({
           </h2>
 
           <p>
-            Run evidence-grounded LangGraph
-            investigations for
+            Follow each investigation as a
+            readable evidence story for
             {" "}
             {caseRecord.case_number}.
           </p>
@@ -309,11 +393,10 @@ function InvestigationsWorkspace({
           </h3>
 
           <p>
-            CaseMesh will analyze the case,
-            retrieve grounded evidence,
-            assess evidence sufficiency,
-            identify gaps and produce cited
-            findings.
+            CaseMesh analyzes the case,
+            retrieves grounded evidence,
+            assesses sufficiency, identifies
+            gaps, and produces cited findings.
           </p>
         </div>
 
@@ -443,16 +526,20 @@ function InvestigationsWorkspace({
 
             <div className="document-detail-panel">
               {selectedRun && (
-                <>
-                  <div className="document-detail-header">
+                <div className="investigation-story">
+                  <section className="story-hero">
                     <div>
                       <div className="section-label">
-                        SELECTED RUN
+                        INVESTIGATION STORY
                       </div>
 
                       <h3>
-                        Investigation Result
+                        From objective to decision
                       </h3>
+
+                      <p>
+                        {caseRecord.title}
+                      </p>
                     </div>
 
                     <span
@@ -464,505 +551,589 @@ function InvestigationsWorkspace({
                     >
                       {selectedRun.state}
                     </span>
-                  </div>
+                  </section>
 
-                  <div className="document-metadata">
+                  <div className="story-metrics">
                     <div>
-                      <span>
-                        Workflow ID
-                      </span>
-
+                      <span>Confidence</span>
                       <strong>
-                        {
-                          selectedRun.workflow_id
-                        }
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>
-                        Confidence
-                      </span>
-
-                      <strong>
-                        {
-                          selectedRun.confidence ??
-                          "N/A"
-                        }
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>
-                        Abstained
-                      </span>
-
-                      <strong>
-                        {selectedRun.abstained
-                          ? "Yes"
-                          : "No"}
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>
-                        Current Step
-                      </span>
-
-                      <strong>
-                        {
-                          selectedRun.current_step ??
-                          "N/A"
-                        }
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>
-                        Attempt
-                      </span>
-
-                      <strong>
-                        {selectedRun.attempt}
-                      </strong>
-                    </div>
-
-                    <div>
-                      <span>
-                        Completed
-                      </span>
-
-                      <strong>
-                        {formatDate(
-                          selectedRun.completed_at,
+                        {formatLabel(
+                          selectedRun.confidence,
                         )}
                       </strong>
                     </div>
+
+                    <div>
+                      <span>Evidence</span>
+                      <strong>
+                        {selectedRun.evidence.length}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Citations</span>
+                      <strong>
+                        {selectedRun.citations.length}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <span>Evidence Gaps</span>
+                      <strong>
+                        {selectedRun.gaps.length}
+                      </strong>
+                    </div>
                   </div>
 
-                  {selectedRun.risk_triggers && (
-                    <>
-                      <div className="chunks-header">
-                        <div>
-                          <div className="section-label">
-                            RISK REVIEW SIGNALS
-                          </div>
+                  <section className="story-timeline">
+                    <div
+                      className={
+                        selectedRun.objective
+                          ? "story-timeline-item done"
+                          : "story-timeline-item"
+                      }
+                    >
+                      <span>1</span>
+                      <strong>Objective</strong>
+                      <small>
+                        Investigation question defined
+                      </small>
+                    </div>
 
-                          <h3>
-                            Risk Review Signals
-                          </h3>
-                        </div>
+                    <div
+                      className={
+                        selectedRun.plan.length > 0
+                          ? "story-timeline-item done"
+                          : "story-timeline-item"
+                      }
+                    >
+                      <span>2</span>
+                      <strong>Plan</strong>
+                      <small>
+                        Workflow steps prepared
+                      </small>
+                    </div>
+
+                    <div
+                      className={
+                        selectedRun.evidence.length > 0
+                          ? "story-timeline-item done"
+                          : "story-timeline-item"
+                      }
+                    >
+                      <span>3</span>
+                      <strong>Evidence</strong>
+                      <small>
+                        Relevant sources retrieved
+                      </small>
+                    </div>
+
+                    <div
+                      className={
+                        selectedRun.analysis ||
+                        selectedRun.findings
+                          ? "story-timeline-item done"
+                          : "story-timeline-item"
+                      }
+                    >
+                      <span>4</span>
+                      <strong>Analysis</strong>
+                      <small>
+                        Evidence interpreted
+                      </small>
+                    </div>
+
+                    <div
+                      className={
+                        selectedRun.risk_triggers ||
+                        selectedRun.second_review
+                          ? "story-timeline-item done"
+                          : "story-timeline-item"
+                      }
+                    >
+                      <span>5</span>
+                      <strong>Review</strong>
+                      <small>
+                        Risk and routing assessed
+                      </small>
+                    </div>
+
+                    <div
+                      className={
+                        selectedRun.state === "completed"
+                          ? "story-timeline-item done"
+                          : "story-timeline-item"
+                      }
+                    >
+                      <span>6</span>
+                      <strong>Outcome</strong>
+                      <small>
+                        Next step made explicit
+                      </small>
+                    </div>
+                  </section>
+
+                  <div className="story-grid">
+                    <article className="story-card">
+                      <div className="story-step">
+                        01
                       </div>
 
-                      <div className="document-metadata">
-                        <div>
+                      <div className="section-label">
+                        THE QUESTION
+                      </div>
+
+                      <h4>
+                        What are we trying to determine?
+                      </h4>
+
+                      <p className="story-copy">
+                        {selectedRun.objective ??
+                          "No objective available."}
+                      </p>
+                    </article>
+
+                    <article className="story-card story-card-accent">
+                      <div className="story-step">
+                        02
+                      </div>
+
+                      <div className="section-label">
+                        WHAT CASEMESH FOUND
+                      </div>
+
+                      <h4>
+                        Grounded finding
+                      </h4>
+
+                      <p className="story-copy">
+                        {selectedRun.findings ??
+                          selectedRun.assessment ??
+                          "No grounded finding is available yet."}
+                      </p>
+                    </article>
+
+                    <article className="story-card">
+                      <div className="story-step">
+                        03
+                      </div>
+
+                      <div className="section-label">
+                        WHY THIS RESULT
+                      </div>
+
+                      <h4>
+                        Evidence picture
+                      </h4>
+
+                      <p className="story-copy">
+                        CaseMesh retrieved
+                        {" "}
+                        {selectedRun.evidence.length}
+                        {" "}
+                        evidence reference
+                        {selectedRun.evidence.length === 1
+                          ? ""
+                          : "s"}
+                        {" "}
+                        and attached
+                        {" "}
+                        {selectedRun.citations.length}
+                        {" "}
+                        citation
+                        {selectedRun.citations.length === 1
+                          ? ""
+                          : "s"}
+                        {" "}
+                        to keep the result traceable.
+                      </p>
+
+                      {selectedRun.evidence
+                        .slice(0, 3)
+                        .map(
+                          (item, index) => (
+                            <div
+                              className="story-evidence-preview"
+                              key={item.chunk_id}
+                            >
+                              <strong>
+                                Evidence {index + 1}
+                              </strong>
+
+                              <span>
+                                Chunk #{item.chunk_index}
+                                {" | "}
+                                Hybrid score
+                                {" "}
+                                {item.hybrid_score.toFixed(
+                                  4,
+                                )}
+                              </span>
+
+                              <p>
+                                {item.excerpt}
+                              </p>
+                            </div>
+                          ),
+                        )}
+                    </article>
+
+                    <article className="story-card">
+                      <div className="story-step">
+                        04
+                      </div>
+
+                      <div className="section-label">
+                        ANALYSIS
+                      </div>
+
+                      <h4>
+                        How the evidence was interpreted
+                      </h4>
+
+                      <p className="story-copy">
+                        {selectedRun.analysis ??
+                          "No analysis is available yet."}
+                      </p>
+
+                      {selectedRun.assessment && (
+                        <div className="story-callout">
                           <span>
-                            Second Review Requested
+                            Evidence assessment
                           </span>
 
-                          <strong>
-                            {
+                          <p>
+                            {selectedRun.assessment}
+                          </p>
+                        </div>
+                      )}
+                    </article>
+
+                    <article className="story-card">
+                      <div className="story-step">
+                        05
+                      </div>
+
+                      <div className="section-label">
+                        RISK & REVIEW
+                      </div>
+
+                      <h4>
+                        What needs extra attention?
+                      </h4>
+
+                      <div className="story-status-row">
+                        <span
+                          className={
+                            `story-pill ${toneClass(
                               selectedRun
-                                .risk_triggers
-                                .second_review_requested
-                                ? "Yes"
-                                : "No"
+                                .second_review
+                                ?.risk_level,
+                            )}`
+                          }
+                        >
+                          {deriveRiskSummary(
+                            selectedRun,
+                          )}
+                        </span>
+
+                        {selectedRun.second_review && (
+                          <span
+                            className={
+                              `story-pill ${toneClass(
+                                selectedRun
+                                  .second_review
+                                  .effective_route,
+                              )}`
                             }
-                          </strong>
-                        </div>
-
-                        <div>
-                          <span>
-                            Reason Codes
-                          </span>
-
-                          <strong>
-                            {formatReasonCodes(
-                              selectedRun
-                                .risk_triggers
-                                .reason_codes,
-                            )}
-                          </strong>
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {selectedRun.second_review && (
-                    <>
-                      <div className="chunks-header">
-                        <div>
-                          <div className="section-label">
-                            INDEPENDENT SECOND REVIEW
-                          </div>
-
-                          <h3>
-                            Independent Second Review
-                          </h3>
-                        </div>
-                      </div>
-
-                      <div className="document-metadata">
-                        <div>
-                          <span>
-                            Status
-                          </span>
-
-                          <strong>
-                            {formatReviewValue(
-                              selectedRun
-                                .second_review
-                                .status,
-                            )}
-                          </strong>
-                        </div>
-
-                        <div>
-                          <span>
-                            Agreement
-                          </span>
-
-                          <strong>
-                            {formatReviewValue(
-                              selectedRun
-                                .second_review
-                                .agreement,
-                            )}
-                          </strong>
-                        </div>
-
-                        <div>
-                          <span>
-                            Risk Level
-                          </span>
-
-                          <strong>
-                            {formatReviewValue(
-                              selectedRun
-                                .second_review
-                                .risk_level,
-                            )}
-                          </strong>
-                        </div>
-
-                        <div>
-                          <span>
-                            Effective Route
-                          </span>
-
-                          <strong>
-                            {formatReviewValue(
+                          >
+                            Route:
+                            {" "}
+                            {formatLabel(
                               selectedRun
                                 .second_review
                                 .effective_route,
                             )}
-                          </strong>
-                        </div>
-
-                        <div>
-                          <span>
-                            Forced Human Review
                           </span>
-
-                          <strong>
-                            {
-                              selectedRun
-                                .second_review
-                                .forced_human_review
-                                ? "Yes"
-                                : "No"
-                            }
-                          </strong>
-                        </div>
-
-                        <div>
-                          <span>
-                            Guardrail Decision
-                          </span>
-
-                          <strong>
-                            {formatReviewValue(
-                              selectedRun
-                                .second_review
-                                .guardrail_decision,
-                            )}
-                          </strong>
-                        </div>
-
-                        <div>
-                          <span>
-                            Reason Codes
-                          </span>
-
-                          <strong>
-                            {formatReasonCodes(
-                              selectedRun
-                                .second_review
-                                .reason_codes,
-                            )}
-                          </strong>
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  <div className="chunks-header">
-                    <div>
-                      <div className="section-label">
-                        OBJECTIVE
+                        )}
                       </div>
 
-                      <h3>
-                        Investigation Objective
-                      </h3>
-                    </div>
-                  </div>
+                      {selectedRun.risk_triggers && (
+                        <p className="story-copy">
+                          Review reasons:
+                          {" "}
+                          {formatReasonCodes(
+                            selectedRun
+                              .risk_triggers
+                              .reason_codes,
+                          )}
+                        </p>
+                      )}
 
-                  <article className="chunk-card">
-                    <pre>
-                      {selectedRun.objective ??
-                        "No objective available."}
-                    </pre>
-                  </article>
-
-                  <div className="chunks-header">
-                    <div>
-                      <div className="section-label">
-                        CASE ANALYSIS
-                      </div>
-
-                      <h3>
-                        Analysis
-                      </h3>
-                    </div>
-                  </div>
-
-                  <article className="chunk-card">
-                    <pre>
-                      {selectedRun.analysis ??
-                        "No analysis available."}
-                    </pre>
-                  </article>
-
-                  <div className="chunks-header">
-                    <div>
-                      <div className="section-label">
-                        ASSESSMENT
-                      </div>
-
-                      <h3>
-                        Evidence Assessment
-                      </h3>
-                    </div>
-                  </div>
-
-                  <article className="chunk-card">
-                    <pre>
-                      {selectedRun.assessment ??
-                        "No assessment available."}
-                    </pre>
-                  </article>
-
-                  <div className="chunks-header">
-                    <div>
-                      <div className="section-label">
-                        FINDINGS
-                      </div>
-
-                      <h3>
-                        Grounded Findings
-                      </h3>
-                    </div>
-                  </div>
-
-                  <article className="chunk-card">
-                    <pre>
-                      {selectedRun.findings ??
-                        "No findings available."}
-                    </pre>
-                  </article>
-
-                  <div className="chunks-header">
-                    <div>
-                      <div className="section-label">
-                        PLAN
-                      </div>
-
-                      <h3>
-                        Investigation Plan
-                      </h3>
-                    </div>
-                  </div>
-
-                  {selectedRun.plan.length ===
-                    0 && (
-                    <div className="empty-state">
-                      No plan steps available.
-                    </div>
-                  )}
-
-                  {selectedRun.plan.map(
-                    (item) => (
-                      <article
-                        className="chunk-card"
-                        key={item.step}
-                      >
-                        <div className="chunk-card-header">
-                          <strong>
-                            Step {item.step}
-                          </strong>
-                        </div>
-
-                        <pre>
-                          {item.title}
-                        </pre>
-                      </article>
-                    ),
-                  )}
-
-                  <div className="chunks-header">
-                    <div>
-                      <div className="section-label">
-                        EVIDENCE
-                      </div>
-
-                      <h3>
-                        Retrieved Evidence
-                      </h3>
-                    </div>
-                  </div>
-
-                  {selectedRun.evidence.length ===
-                    0 && (
-                    <div className="empty-state">
-                      No evidence references
-                      available.
-                    </div>
-                  )}
-
-                  {selectedRun.evidence.map(
-                    (item, index) => (
-                      <article
-                        className="chunk-card"
-                        key={item.chunk_id}
-                      >
-                        <div className="chunk-card-header">
-                          <strong>
-                            Evidence #{index + 1}
-                          </strong>
-
-                          <span>
-                            Chunk #{item.chunk_index}
-                            {" | "}
-                            Hybrid:
-                            {" "}
-                            {item.hybrid_score.toFixed(
-                              6,
-                            )}
-                          </span>
-                        </div>
-
-                        <pre>
-                          {item.excerpt}
-                        </pre>
-                      </article>
-                    ),
-                  )}
-
-                  <div className="chunks-header">
-                    <div>
-                      <div className="section-label">
-                        CITATIONS
-                      </div>
-
-                      <h3>
-                        Grounding Citations
-                      </h3>
-                    </div>
-                  </div>
-
-                  {selectedRun.citations.length ===
-                    0 && (
-                    <div className="empty-state">
-                      No citations available.
-                    </div>
-                  )}
-
-                  {selectedRun.citations.map(
-                    (citation) => (
-                      <article
-                        className="chunk-card"
-                        key={
-                          `${citation.label}-${citation.chunk_id}`
-                        }
-                      >
-                        <div className="chunk-card-header">
-                          <strong>
-                            [{citation.label}]
-                          </strong>
-
-                          <span>
-                            Chunk #
-                            {
-                              citation.chunk_index
-                            }
-                          </span>
-                        </div>
-
-                        <pre>
-                          {citation.excerpt}
-                        </pre>
-                      </article>
-                    ),
-                  )}
-
-                  <div className="chunks-header">
-                    <div>
-                      <div className="section-label">
-                        EVIDENCE GAPS
-                      </div>
-
-                      <h3>
-                        Identified Gaps
-                      </h3>
-                    </div>
-                  </div>
-
-                  {selectedRun.gaps.length ===
-                    0 ? (
-                    <div className="pipeline-status complete">
-                      No material evidence gaps
-                      identified.
-                    </div>
-                  ) : (
-                    selectedRun.gaps.map(
-                      (gap) => (
-                        <article
-                          className="chunk-card"
-                          key={gap.code}
-                        >
-                          <div className="chunk-card-header">
+                      {selectedRun.second_review && (
+                        <div className="story-review-grid">
+                          <div>
+                            <span>Status</span>
                             <strong>
-                              {gap.code}
+                              {formatLabel(
+                                selectedRun
+                                  .second_review
+                                  .status,
+                              )}
                             </strong>
                           </div>
 
-                          <pre>
-                            {gap.description}
-                          </pre>
-                        </article>
-                      ),
-                    )
-                  )}
+                          <div>
+                            <span>Agreement</span>
+                            <strong>
+                              {formatLabel(
+                                selectedRun
+                                  .second_review
+                                  .agreement,
+                              )}
+                            </strong>
+                          </div>
+
+                          <div>
+                            <span>Guardrail</span>
+                            <strong>
+                              {formatLabel(
+                                selectedRun
+                                  .second_review
+                                  .guardrail_decision,
+                              )}
+                            </strong>
+                          </div>
+
+                          <div>
+                            <span>Human Review</span>
+                            <strong>
+                              {selectedRun
+                                .second_review
+                                .forced_human_review
+                                ? "Required"
+                                : "Not forced"}
+                            </strong>
+                          </div>
+                        </div>
+                      )}
+                    </article>
+
+                    <article className="story-card story-next-action">
+                      <div className="story-step">
+                        06
+                      </div>
+
+                      <div className="section-label">
+                        NEXT ACTION
+                      </div>
+
+                      <h4>
+                        What should happen now?
+                      </h4>
+
+                      <p className="story-copy">
+                        {deriveNextStep(
+                          selectedRun,
+                        )}
+                      </p>
+
+                      <div className="story-next-meta">
+                        <span>
+                          Current step
+                        </span>
+
+                        <strong>
+                          {formatLabel(
+                            selectedRun.current_step,
+                          )}
+                        </strong>
+
+                        <span>
+                          Completed
+                        </span>
+
+                        <strong>
+                          {formatDate(
+                            selectedRun.completed_at,
+                          )}
+                        </strong>
+                      </div>
+                    </article>
+                  </div>
+
+                  <details className="story-details">
+                    <summary>
+                      Investigation plan
+                    </summary>
+
+                    <div className="story-details-body">
+                      {selectedRun.plan.length ===
+                        0 ? (
+                        <div className="empty-state">
+                          No plan steps available.
+                        </div>
+                      ) : (
+                        selectedRun.plan.map(
+                          (item) => (
+                            <div
+                              className="story-detail-row"
+                              key={item.step}
+                            >
+                              <span>
+                                Step {item.step}
+                              </span>
+
+                              <strong>
+                                {item.title}
+                              </strong>
+                            </div>
+                          ),
+                        )
+                      )}
+                    </div>
+                  </details>
+
+                  <details className="story-details">
+                    <summary>
+                      All retrieved evidence
+                    </summary>
+
+                    <div className="story-details-body">
+                      {selectedRun.evidence.length ===
+                        0 ? (
+                        <div className="empty-state">
+                          No evidence references
+                          available.
+                        </div>
+                      ) : (
+                        selectedRun.evidence.map(
+                          (item, index) => (
+                            <article
+                              className="story-source-card"
+                              key={item.chunk_id}
+                            >
+                              <div>
+                                <strong>
+                                  Evidence #{index + 1}
+                                </strong>
+
+                                <span>
+                                  Document
+                                  {" "}
+                                  {item.document_id}
+                                  {" | "}
+                                  Chunk
+                                  {" "}
+                                  {item.chunk_index}
+                                </span>
+                              </div>
+
+                              <p>
+                                {item.excerpt}
+                              </p>
+                            </article>
+                          ),
+                        )
+                      )}
+                    </div>
+                  </details>
+
+                  <details className="story-details">
+                    <summary>
+                      Grounding citations
+                    </summary>
+
+                    <div className="story-details-body">
+                      {selectedRun.citations.length ===
+                        0 ? (
+                        <div className="empty-state">
+                          No citations available.
+                        </div>
+                      ) : (
+                        selectedRun.citations.map(
+                          (citation) => (
+                            <article
+                              className="story-source-card"
+                              key={
+                                `${citation.label}-${citation.chunk_id}`
+                              }
+                            >
+                              <div>
+                                <strong>
+                                  [{citation.label}]
+                                </strong>
+
+                                <span>
+                                  Chunk
+                                  {" "}
+                                  {citation.chunk_index}
+                                </span>
+                              </div>
+
+                              <p>
+                                {citation.excerpt}
+                              </p>
+                            </article>
+                          ),
+                        )
+                      )}
+                    </div>
+                  </details>
+
+                  <details className="story-details">
+                    <summary>
+                      Evidence gaps
+                    </summary>
+
+                    <div className="story-details-body">
+                      {selectedRun.gaps.length ===
+                        0 ? (
+                        <div className="pipeline-status complete">
+                          No material evidence gaps
+                          identified.
+                        </div>
+                      ) : (
+                        selectedRun.gaps.map(
+                          (gap) => (
+                            <div
+                              className="story-detail-row"
+                              key={gap.code}
+                            >
+                              <span>
+                                {gap.code}
+                              </span>
+
+                              <strong>
+                                {gap.description}
+                              </strong>
+                            </div>
+                          ),
+                        )
+                      )}
+                    </div>
+                  </details>
+
+                  <details className="story-details story-raw-details">
+                    <summary>
+                      Developer view: raw JSON
+                    </summary>
+
+                    <pre className="story-raw-json">
+                      {JSON.stringify(
+                        selectedRun,
+                        null,
+                        2,
+                      )}
+                    </pre>
+                  </details>
 
                   {selectedRun.error_message && (
                     <div className="error-panel">
-                      {
-                        selectedRun.error_message
-                      }
+                      {selectedRun.error_message}
                     </div>
                   )}
-                </>
+                </div>
               )}
             </div>
           </div>
