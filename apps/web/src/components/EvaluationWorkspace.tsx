@@ -187,6 +187,52 @@ function EvaluationWorkspace() {
   )
 
 
+  const [
+    insightOpen,
+    setInsightOpen,
+  ] = useState(
+    false,
+  )
+
+
+  useEffect(() => {
+    if (!insightOpen) {
+      return
+    }
+
+    const previousOverflow =
+      document.body.style.overflow
+
+    document.body.style.overflow =
+      "hidden"
+
+    function handleKeyDown(
+      event: KeyboardEvent,
+    ) {
+      if (event.key === "Escape") {
+        setInsightOpen(
+          false,
+        )
+      }
+    }
+
+    window.addEventListener(
+      "keydown",
+      handleKeyDown,
+    )
+
+    return () => {
+      document.body.style.overflow =
+        previousOverflow
+
+      window.removeEventListener(
+        "keydown",
+        handleKeyDown,
+      )
+    }
+  }, [insightOpen])
+
+
   useEffect(() => {
     const controller =
       new AbortController()
@@ -463,6 +509,19 @@ function EvaluationWorkspace() {
     })()
 
 
+  function openInsight(
+    key: InsightKey,
+  ) {
+    setSelectedInsight(
+      key,
+    )
+
+    setInsightOpen(
+      true,
+    )
+  }
+
+
   return (
     <section className="evaluation-workspace">
 
@@ -522,34 +581,8 @@ function EvaluationWorkspace() {
         </strong>
 
         <span>
-          Click the cards and gauges below to open a clearer explanation of what each metric means.
+          Click any card or gauge to open its explanation beside your current position. No scrolling back to the top.
         </span>
-      </section>
-
-      <section className="evaluation-insight-panel">
-        <div className="evaluation-insight-heading">
-          <div>
-            <div className="section-label">
-              {insight.label}
-            </div>
-
-            <h3>
-              {insight.title}
-            </h3>
-          </div>
-
-          <span className="evaluation-insight-badge">
-            DETAILS
-          </span>
-        </div>
-
-        <p>
-          {insight.summary}
-        </p>
-
-        <div className="evaluation-insight-note">
-          {insight.note}
-        </div>
       </section>
 
       <section className="evaluation-scope-warning">
@@ -572,7 +605,7 @@ function EvaluationWorkspace() {
 
 
       <section className="evaluation-story-grid">
-        <button type="button" className="story-card story-card-accent evaluation-clickable-card" onClick={() => setSelectedInsight("scope")}>
+        <button type="button" className="story-card story-card-accent evaluation-clickable-card" onClick={() => openInsight("scope")}>
           <div className="story-step">
             01
           </div>
@@ -603,7 +636,7 @@ function EvaluationWorkspace() {
           </p>
         </button>
 
-        <button type="button" className="story-card evaluation-clickable-card" onClick={() => setSelectedInsight("quality")}>
+        <button type="button" className="story-card evaluation-clickable-card" onClick={() => openInsight("quality")}>
           <div className="story-step">
             02
           </div>
@@ -639,7 +672,7 @@ function EvaluationWorkspace() {
           </p>
         </button>
 
-        <button type="button" className="story-card evaluation-clickable-card" onClick={() => setSelectedInsight("stability")}>
+        <button type="button" className="story-card evaluation-clickable-card" onClick={() => openInsight("stability")}>
           <div className="story-step">
             03
           </div>
@@ -659,7 +692,7 @@ function EvaluationWorkspace() {
           </p>
         </button>
 
-        <button type="button" className="story-card story-next-action evaluation-clickable-card" onClick={() => setSelectedInsight("attention")}>
+        <button type="button" className="story-card story-next-action evaluation-clickable-card" onClick={() => openInsight("attention")}>
           <div className="story-step">
             04
           </div>
@@ -681,7 +714,7 @@ function EvaluationWorkspace() {
       </section>
 
       <section className="evaluation-summary-strip">
-        <button type="button" className="evaluation-summary-card evaluation-clickable-card" onClick={() => setSelectedInsight("records")}>
+        <button type="button" className="evaluation-summary-card evaluation-clickable-card" onClick={() => openInsight("records")}>
           <span>
             DATASET RECORDS
           </span>
@@ -690,7 +723,7 @@ function EvaluationWorkspace() {
           </strong>
         </button>
 
-        <button type="button" className="evaluation-summary-card evaluation-clickable-card" onClick={() => setSelectedInsight("unique")}>
+        <button type="button" className="evaluation-summary-card evaluation-clickable-card" onClick={() => openInsight("unique")}>
           <span>
             UNIQUE SCENARIOS
           </span>
@@ -699,7 +732,7 @@ function EvaluationWorkspace() {
           </strong>
         </button>
 
-        <button type="button" className="evaluation-summary-card evaluation-clickable-card" onClick={() => setSelectedInsight("duplicates")}>
+        <button type="button" className="evaluation-summary-card evaluation-clickable-card" onClick={() => openInsight("duplicates")}>
           <span>
             DUPLICATES
           </span>
@@ -708,7 +741,7 @@ function EvaluationWorkspace() {
           </strong>
         </button>
 
-        <button type="button" className="evaluation-summary-card evaluation-clickable-card" onClick={() => setSelectedInsight("failures")}>
+        <button type="button" className="evaluation-summary-card evaluation-clickable-card" onClick={() => openInsight("failures")}>
           <span>
             FAILURES
           </span>
@@ -727,7 +760,7 @@ function EvaluationWorkspace() {
               .decision_accuracy
           }
           detail="Business decision match"
-          onOpen={() => setSelectedInsight("decision")}
+          onOpen={() => openInsight("decision")}
         />
 
         <AccuracyGauge
@@ -739,7 +772,7 @@ function EvaluationWorkspace() {
           detail={
             `${summary.metrics.resolved_credit_cases} resolved credit cases`
           }
-          onOpen={() => setSelectedInsight("credit")}
+          onOpen={() => openInsight("credit")}
         />
 
         <AccuracyGauge
@@ -749,14 +782,14 @@ function EvaluationWorkspace() {
               .human_review_accuracy
           }
           detail="Review-routing accuracy"
-          onOpen={() => setSelectedInsight("review")}
+          onOpen={() => openInsight("review")}
         />
       </section>
 
 
       <section className="evaluation-visual-grid">
 
-        <button type="button" className="evaluation-panel evaluation-clickable-card" onClick={() => setSelectedInsight("composition")}>
+        <button type="button" className="evaluation-panel evaluation-clickable-card" onClick={() => openInsight("composition")}>
           <div className="evaluation-panel-heading">
             <div>
               <div className="section-label">
@@ -826,7 +859,7 @@ function EvaluationWorkspace() {
         </button>
 
 
-        <button type="button" className="evaluation-panel evaluation-clickable-card" onClick={() => setSelectedInsight("repeatability")}>
+        <button type="button" className="evaluation-panel evaluation-clickable-card" onClick={() => openInsight("repeatability")}>
           <div className="evaluation-panel-heading">
             <div>
               <div className="section-label">
@@ -1104,6 +1137,85 @@ function EvaluationWorkspace() {
           </strong>
         </div>
       </section>
+
+      {insightOpen && (
+        <>
+          <button
+            type="button"
+            className="evaluation-insight-backdrop"
+            aria-label="Close metric details"
+            onClick={() =>
+              setInsightOpen(
+                false,
+              )
+            }
+          />
+
+          <aside
+            className="evaluation-insight-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="evaluation-insight-title"
+          >
+            <div className="evaluation-insight-drawer-head">
+              <div>
+                <div className="section-label">
+                  {insight.label}
+                </div>
+
+                <h3 id="evaluation-insight-title">
+                  {insight.title}
+                </h3>
+              </div>
+
+              <button
+                type="button"
+                className="evaluation-insight-close"
+                aria-label="Close details"
+                onClick={() =>
+                  setInsightOpen(
+                    false,
+                  )
+                }
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="evaluation-insight-drawer-body">
+              <section>
+                <span className="evaluation-insight-kicker">
+                  WHAT THIS MEANS
+                </span>
+
+                <p>
+                  {insight.summary}
+                </p>
+              </section>
+
+              <section>
+                <span className="evaluation-insight-kicker">
+                  HOW TO READ IT
+                </span>
+
+                <div className="evaluation-insight-note">
+                  {insight.note}
+                </div>
+              </section>
+
+              <div className="evaluation-insight-context">
+                <span>
+                  You can close this panel and keep your exact dashboard position.
+                </span>
+
+                <strong>
+                  Press Esc or click outside to close.
+                </strong>
+              </div>
+            </div>
+          </aside>
+        </>
+      )}
 
     </section>
   )
