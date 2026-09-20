@@ -5117,3 +5117,456 @@ section {
     }
   }
 }
+
+
+/* Continuous animated background network */
+
+.animated-network-background {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.animated-network-background::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(7, 11, 20, 0.08),
+      rgba(7, 11, 20, 0.34)
+    );
+}
+
+.network-mesh {
+  position: absolute;
+  inset: -6%;
+  width: 112%;
+  height: 112%;
+  opacity: 0.72;
+  filter:
+    drop-shadow(
+      0 0 14px
+      rgba(92, 121, 255, 0.08)
+    );
+  animation:
+    network-mesh-float 18s
+    ease-in-out infinite alternate;
+}
+
+.network-path {
+  fill: none;
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-dasharray: 10 16;
+  vector-effect:
+    non-scaling-stroke;
+}
+
+.network-path-a {
+  animation:
+    network-flow-a 12s
+    linear infinite;
+}
+
+.network-path-b {
+  animation:
+    network-flow-b 16s
+    linear infinite reverse;
+}
+
+.network-path-c {
+  animation:
+    network-flow-c 19s
+    linear infinite;
+}
+
+.network-path-d {
+  animation:
+    network-flow-d 14s
+    linear infinite reverse;
+}
+
+.network-node-cluster {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.network-cluster-a {
+  animation:
+    network-cluster-a 9s
+    ease-in-out infinite alternate;
+}
+
+.network-cluster-b {
+  animation:
+    network-cluster-b 11s
+    ease-in-out infinite alternate;
+}
+
+.network-cluster-c {
+  animation:
+    network-cluster-c 10s
+    ease-in-out infinite alternate;
+}
+
+.network-node-halo {
+  opacity: 0.22;
+  animation:
+    network-halo-pulse 3.4s
+    ease-in-out infinite;
+}
+
+.network-node {
+  fill: #aab7ff;
+  filter:
+    drop-shadow(
+      0 0 5px
+      rgba(109, 140, 255, 0.9)
+    );
+  animation:
+    network-node-pulse 2.8s
+    ease-in-out infinite;
+}
+
+.network-node-small {
+  fill: #69c8e7;
+  opacity: 0.78;
+}
+
+.network-link {
+  stroke:
+    rgba(111, 139, 255, 0.32);
+  stroke-width: 1;
+}
+
+.network-orb {
+  position: absolute;
+  width: 44vw;
+  height: 44vw;
+  min-width: 420px;
+  min-height: 420px;
+  border-radius: 50%;
+  filter: blur(72px);
+  opacity: 0.22;
+  mix-blend-mode: screen;
+}
+
+.network-orb-a {
+  top: -18%;
+  right: -9%;
+  background:
+    radial-gradient(
+      circle,
+      rgba(84, 111, 255, 0.45),
+      rgba(84, 111, 255, 0.08) 44%,
+      transparent 72%
+    );
+  animation:
+    network-orb-a 15s
+    ease-in-out infinite alternate;
+}
+
+.network-orb-b {
+  left: 6%;
+  bottom: -24%;
+  background:
+    radial-gradient(
+      circle,
+      rgba(53, 185, 211, 0.32),
+      rgba(53, 185, 211, 0.06) 46%,
+      transparent 72%
+    );
+  animation:
+    network-orb-b 21s
+    ease-in-out infinite alternate;
+}
+
+.network-orb-c {
+  top: 34%;
+  left: 38%;
+  width: 28vw;
+  height: 28vw;
+  min-width: 300px;
+  min-height: 300px;
+  background:
+    radial-gradient(
+      circle,
+      rgba(112, 92, 210, 0.18),
+      rgba(112, 92, 210, 0.035) 48%,
+      transparent 74%
+    );
+  animation:
+    network-orb-c 17s
+    ease-in-out infinite alternate;
+}
+
+.network-signal {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: #9fb0ff;
+  box-shadow:
+    0 0 12px
+    rgba(109, 140, 255, 0.9),
+    0 0 26px
+    rgba(80, 198, 232, 0.35);
+  opacity: 0.72;
+}
+
+.network-signal-a {
+  top: 22%;
+  left: 18%;
+  animation:
+    network-signal-a 14s
+    ease-in-out infinite;
+}
+
+.network-signal-b {
+  top: 58%;
+  left: 72%;
+  animation:
+    network-signal-b 17s
+    ease-in-out infinite;
+}
+
+.network-signal-c {
+  top: 74%;
+  left: 41%;
+  animation:
+    network-signal-c 12s
+    ease-in-out infinite;
+}
+
+.sidebar,
+.main-content {
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes network-mesh-float {
+  0% {
+    transform:
+      translate3d(-1.5%, -1%, 0)
+      scale(1);
+  }
+
+  100% {
+    transform:
+      translate3d(1.5%, 1%, 0)
+      scale(1.025);
+  }
+}
+
+@keyframes network-flow-a {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: -180;
+  }
+}
+
+@keyframes network-flow-b {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: -220;
+  }
+}
+
+@keyframes network-flow-c {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: -260;
+  }
+}
+
+@keyframes network-flow-d {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: -200;
+  }
+}
+
+@keyframes network-cluster-a {
+  from {
+    transform:
+      translate3d(-8px, -4px, 0);
+  }
+
+  to {
+    transform:
+      translate3d(14px, 12px, 0);
+  }
+}
+
+@keyframes network-cluster-b {
+  from {
+    transform:
+      translate3d(10px, -8px, 0);
+  }
+
+  to {
+    transform:
+      translate3d(-10px, 14px, 0);
+  }
+}
+
+@keyframes network-cluster-c {
+  from {
+    transform:
+      translate3d(-5px, 10px, 0);
+  }
+
+  to {
+    transform:
+      translate3d(12px, -8px, 0);
+  }
+}
+
+@keyframes network-halo-pulse {
+  0%,
+  100% {
+    opacity: 0.14;
+    transform: scale(0.88);
+  }
+
+  50% {
+    opacity: 0.34;
+    transform: scale(1.14);
+  }
+}
+
+@keyframes network-node-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes network-orb-a {
+  0% {
+    transform:
+      translate3d(-4%, -2%, 0)
+      scale(0.94);
+  }
+
+  100% {
+    transform:
+      translate3d(8%, 10%, 0)
+      scale(1.08);
+  }
+}
+
+@keyframes network-orb-b {
+  0% {
+    transform:
+      translate3d(-3%, 5%, 0)
+      scale(1);
+  }
+
+  100% {
+    transform:
+      translate3d(10%, -8%, 0)
+      scale(1.1);
+  }
+}
+
+@keyframes network-orb-c {
+  0% {
+    transform:
+      translate3d(-8%, 4%, 0)
+      scale(0.96);
+  }
+
+  100% {
+    transform:
+      translate3d(7%, -6%, 0)
+      scale(1.06);
+  }
+}
+
+@keyframes network-signal-a {
+  0%,
+  100% {
+    transform:
+      translate3d(0, 0, 0);
+    opacity: 0.35;
+  }
+
+  50% {
+    transform:
+      translate3d(110px, 70px, 0);
+    opacity: 0.95;
+  }
+}
+
+@keyframes network-signal-b {
+  0%,
+  100% {
+    transform:
+      translate3d(0, 0, 0);
+    opacity: 0.3;
+  }
+
+  50% {
+    transform:
+      translate3d(-130px, 85px, 0);
+    opacity: 0.9;
+  }
+}
+
+@keyframes network-signal-c {
+  0%,
+  100% {
+    transform:
+      translate3d(0, 0, 0);
+    opacity: 0.28;
+  }
+
+  50% {
+    transform:
+      translate3d(90px, -95px, 0);
+    opacity: 0.88;
+  }
+}
+
+@media (max-width: 900px) {
+  .network-mesh {
+    opacity: 0.52;
+  }
+
+  .network-orb {
+    opacity: 0.16;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .network-mesh,
+  .network-path,
+  .network-node-cluster,
+  .network-node-halo,
+  .network-node,
+  .network-orb,
+  .network-signal {
+    animation: none !important;
+  }
+}

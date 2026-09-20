@@ -15,6 +15,7 @@ import {
 import "./App.css"
 
 import ActionsWorkspace from "./components/ActionsWorkspace"
+import AnimatedNetworkBackground from "./components/AnimatedNetworkBackground"
 import CaseMeshLogo from "./components/CaseMeshLogo"
 import ApprovalsWorkspace from "./components/ApprovalsWorkspace"
 import CasesWorkspace from "./components/CasesWorkspace"
@@ -1065,6 +1066,8 @@ function App() {
 
   return (
     <div className="app-shell">
+      <AnimatedNetworkBackground />
+
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">
