@@ -87,8 +87,9 @@ class RetrievalRepository:
         )
 
         hits: list[VectorSearchHit] = []
-        for chunk, raw_distance in result.all():
-            distance_value = float(raw_distance)
+        for raw_chunk, raw_distance in result.all():
+            chunk = cast(DocumentChunk, raw_chunk)
+            distance_value = float(cast(float, raw_distance))
             similarity = max(-1.0, min(1.0, 1.0 - distance_value))
             hits.append(
                 VectorSearchHit(
@@ -122,8 +123,8 @@ class RetrievalRepository:
 
         return [
             KeywordSearchHit(
-                chunk=chunk,
-                rank_score=float(raw_rank),
+                chunk=cast(DocumentChunk, raw_chunk),
+                rank_score=float(cast(float, raw_rank)),
             )
-            for chunk, raw_rank in result.all()
+            for raw_chunk, raw_rank in result.all()
         ]
