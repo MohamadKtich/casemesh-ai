@@ -28,8 +28,8 @@ services:
 
   api:
     build:
-      context: ./apps/api
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/api/Dockerfile
 
     image: casemesh-api:phase27a
     container_name: casemesh-api
