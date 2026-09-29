@@ -32,7 +32,7 @@ The current project state includes:
 - offline AWS fail-safe regression,
 - final full regression across API, Web, Platform, Docker, and Bicep.
 
-The remaining roadmap focuses on deeper evaluation, observability, FinOps, additional security automation, and final portfolio-release polish.
+The core portfolio application is complete. Remaining roadmap work is now split between optional engineering expansion and final repository presentation. Deeper evaluation, observability, FinOps, and additional security automation are post-portfolio enhancements rather than blockers for the current portfolio release.
 
 Status legend:
 
@@ -210,11 +210,17 @@ Implemented with the current stack:
 - TypeScript,
 - MSAL authentication,
 - production build pipeline,
-- Azure Static Web Apps deployment.
+- Azure Static Web Apps deployment,
+- storytelling-oriented case and investigation UX,
+- readable evidence excerpts and lifecycle views,
+- approval and action storytelling,
+- interactive evaluation drilldowns,
+- viewport-anchored contextual detail drawer,
+- dark-only product theme,
+- continuous animated network background,
+- reduced-motion support.
 
 The original Next.js plan was replaced by the current React + Vite implementation.
-
-Future work may continue improving product UX and portfolio presentation.
 
 ## M13 — Azure Validation ✅
 
@@ -389,19 +395,21 @@ Completed release-preparation work:
 - core README reflects the validated architecture,
 - architecture documentation includes AWS Intelligence v1.1,
 - AWS validation record documented,
-- final full-regression workflow validated.
+- ten architecture/documentation diagrams are present,
+- final full-regression workflow validated,
+- repository description and topics are configured,
+- Azure live URL is attached to the repository,
+- storytelling UX and evaluation presentation are implemented,
+- concise zero-cost-first positioning is documented,
+- concise portfolio demo flow is documented,
+- GitHub repository presentation has been substantially polished.
 
-Still planned:
+Remaining before closing the portfolio release:
 
-- architecture diagrams updated to the final implementation,
-- selected screenshots,
-- deployment and validation screenshots,
-- evaluation results,
-- concise cost/zero-cost-first summary,
-- concise demo flow,
-- optional demo video or GIF,
-- polished GitHub repository presentation,
-- final release tag.
+- add selected final UI screenshots from the deployed application,
+- optionally add one deployment/validation screenshot or short demo GIF,
+- run the final release regression on the chosen release commit,
+- publish the next final portfolio release/tag.
 
 ## Current delivery baseline
 
@@ -442,13 +450,19 @@ Optional/manual AWS validation
 
 ## Current priorities
 
-The next highest-value milestones are:
+The portfolio-closing priorities are now:
 
-1. complete formal evaluation and benchmark reporting,
-2. expand observability and FinOps,
-3. finish remaining security-hardening items,
-4. prepare architecture diagrams and portfolio media,
-5. create the final portfolio release/tag.
+1. add selected final product screenshots,
+2. run one final release regression,
+3. publish the next portfolio release/tag.
+
+After that point, the following remain optional future engineering work:
+
+- deeper retrieval/citation/tool-selection evaluation,
+- OpenTelemetry and richer observability,
+- FinOps dashboards and token/cost aggregation,
+- expanded security automation and threat modeling,
+- optional GCP validation if it adds clear value.
 
 ## Portfolio release principle
 

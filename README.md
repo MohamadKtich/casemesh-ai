@@ -1,6 +1,6 @@
 # CaseMesh AI
 
-> **Status:** Core platform operational. Azure dev deployment, hardened CI/CD, MCP integration, and AWS Intelligence v1.1 validation are complete.
+> **Status:** Core platform operational and portfolio-ready at the application level. Azure dev deployment, hardened CI/CD, MCP integration, AWS Intelligence v1.1 validation, storytelling UX, interactive evaluation drilldowns, and the animated CaseMesh workspace are complete. Final repository media and the next portfolio release tag remain.
 
 **CaseMesh AI** is a full-stack AI case investigation and resolution platform built around one principle:
 
@@ -26,6 +26,39 @@ A case can move through:
 8. audit logging and evaluation.
 
 The system deliberately separates **read-only reasoning** from **write-side execution**.
+
+---
+
+## Product experience
+
+The frontend is designed as an operational case-intelligence workspace rather than a raw API viewer.
+
+The current product experience includes:
+
+- a narrative case journey from **Evidence → Investigation → Approval → Action**,
+- readable investigation storytelling organized around objective, finding, evidence, analysis, review, and next action,
+- evidence lifecycle views and human-readable source excerpts,
+- approval and controlled-action views that expose policy, risk, and human control,
+- an interactive evaluation dashboard with contextual metric explanations,
+- viewport-anchored detail drawers so explanations stay beside the user's current position,
+- a continuous animated network background that reinforces the CaseMesh identity without blocking interaction,
+- reduced-motion support for users who prefer less animation.
+
+Developer and audit detail remains available where useful, but the default interface prioritizes operational meaning over raw JSON.
+
+### Suggested demo flow
+
+A concise portfolio walkthrough can follow this sequence:
+
+1. **Overview** — explain the governed case-intelligence model and platform health.
+2. **Cases** — open a case and show the end-to-end lifecycle.
+3. **Evidence** — show ingestion state, source passages, and Hybrid RAG retrieval.
+4. **Investigations** — show the evidence-backed investigation story and citations.
+5. **Approvals** — show why a sensitive action requires human control.
+6. **Actions** — show dry-run / controlled execution and the audit trail.
+7. **Evaluation** — open metric cards and gauges to explain benchmark scope, decision quality, and repeatability.
+
+This flow demonstrates the product as one coherent system instead of a collection of isolated AI features.
 
 ---
 
@@ -398,6 +431,8 @@ data/evaluation/
 ```
 
 The repository includes a `baseline-sla-v1` evaluation set with results, summaries, failures, run history, and stability artifacts.
+
+The frontend exposes these results through an interactive evaluation workspace. Metrics are intentionally presented with scope explanations so deterministic benchmark success is not misrepresented as broad model-generalization accuracy.
 
 ---
 
