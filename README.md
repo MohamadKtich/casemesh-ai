@@ -46,6 +46,8 @@ The current product experience includes:
 
 Developer and audit detail remains available where useful, but the default interface prioritizes operational meaning over raw JSON.
 
+![CaseMesh AI product overview](docs/images/product/casemesh_overview.png)
+
 ### Suggested demo flow
 
 A concise portfolio walkthrough can follow this sequence:
@@ -191,6 +193,9 @@ AWS validation / intelligence boundary
 
 ## Core domain
 
+![CaseMesh AI case detail](docs/images/product/casemesh_case_detail.png)
+
+
 CaseMesh models a case as a traceable container for evidence, investigation state, resolution drafts, decisions, actions, and audit events.
 
 The design keeps evidence and operational decisions connected so an answer can be traced back to its source material and an executed action can be traced back to its authorization path.
@@ -200,6 +205,9 @@ The design keeps evidence and operational decisions connected so an answer can b
 ---
 
 ## Evidence ingestion and retrieval
+
+![CaseMesh AI evidence workspace and Hybrid RAG](docs/images/product/casemesh_evidence_hybrid_rag.png)
+
 
 Evidence moves through a structured pipeline:
 
@@ -264,6 +272,9 @@ This supports explainability without pretending that retrieval scores are model-
 
 ## Orchestrated AI workflow
 
+![CaseMesh AI investigation workspace](docs/images/product/casemesh_investigation.png)
+
+
 CaseMesh uses coordinated logical roles rather than a swarm of unrestricted autonomous agents.
 
 The workflow separates:
@@ -284,6 +295,11 @@ Read-only tasks can progress automatically when policy allows. Side-effecting or
 ---
 
 ## Human approval and controlled actions
+
+![CaseMesh AI human approval workspace](docs/images/product/casemesh_approvals.png)
+
+![CaseMesh AI controlled dry-run execution](docs/images/product/casemesh_actions_dry_run.png)
+
 
 The execution model distinguishes between two paths.
 
@@ -411,6 +427,9 @@ The manual AWS validation workflow:
 ---
 
 ## Evaluation
+
+![CaseMesh AI evaluation workspace](docs/images/product/casemesh_evaluation.png)
+
 
 CaseMesh includes a dedicated evaluation subsystem rather than treating model output as correct by default.
 
